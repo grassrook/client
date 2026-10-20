@@ -36,7 +36,7 @@ func main() {
 	err = wails.Run(&options.App{
 		Title:  "judging-internal",
 		Width:  1280,
-		Height: 720,
+		Height: 1000,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

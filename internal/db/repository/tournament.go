@@ -23,6 +23,7 @@ type CreateTournamentRequest struct {
 	RandomizeQualifyingOrder bool     `json:"randomizeQualifyingOrder"`
 	QualifyingOrder          []string `json:"qualifyingOrder"`
 	CriteriaConfigID         int      `json:"criteriaConfigID"`
+	QualifyingRounds         int      `json:"qualifyingRounds"`
 }
 
 type BracketMatch struct {
@@ -147,8 +148,8 @@ SELECT config from criteria_configs WHERE id = ?
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO tournaments (
     id, name, starting_date, track_id, qualifying_order,
-    size, randomize_qualifying_order, status, created_at, updated_at, criteria_config
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    size, randomize_qualifying_order, status, created_at, updated_at, criteria_config, qualifying_rounds
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		tournamentID,
 		name,
@@ -161,6 +162,7 @@ INSERT INTO tournaments (
 		now,
 		now,
 		criteriaConfig,
+		req.QualifyingRounds,
 	); err != nil {
 		return nil, err
 	}
@@ -368,6 +370,7 @@ SELECT
 	t1.status,
 	t3.url,
 	t1.criteria_config,
+	t1.qualifying_rounds,
 	CASE WHEN t3.status = 'finalized' THEN 1 ELSE 0 END AS finalized
 FROM tournaments t1
 LEFT JOIN tracks t2
@@ -385,6 +388,7 @@ WHERE t1.id = ?
 		&t.Status,
 		&t.URL,
 		&t.CriteriaConfig,
+		&t.QualifyingRounds,
 		&t.Finalized,
 	)
 	if err != nil {

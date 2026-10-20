@@ -103,8 +103,11 @@ func (r *SQLiteEntrantsRepository) UpdateEntrant(
 	}
 
 	if params.Score != nil {
-		updates = append(updates, "score = ?")
-		args = append(args, *params.Score)
+		updates = append(
+			updates,
+			"score = CASE WHEN score < ? THEN ? ELSE score END",
+		)
+		args = append(args, *params.Score, *params.Score)
 	}
 
 	if len(updates) == 0 {
@@ -134,6 +137,7 @@ func (r *SQLiteEntrantsRepository) UpdateEntrant(
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("entrant not found")
 		}
+
 		return fmt.Errorf("update entrant: %w", err)
 	}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type CalendarDate,getLocalTimeZone } from "@internationalized/date";
+  import { type CalendarDate, getLocalTimeZone } from "@internationalized/date";
   import { Plus } from "@lucide/svelte";
   import CalendarIcon from "@lucide/svelte/icons/calendar";
   import Clock2Icon from "@lucide/svelte/icons/clock-2";
@@ -28,7 +28,11 @@
   import * as Select from "$src/components/ui/select";
   import Switch from "$src/components/ui/switch/switch.svelte";
   import { Textarea } from "$src/components/ui/textarea";
-  import { CreateTournament, GetCriteriaConfigs } from "$wails/go/main/App";
+  import {
+    CreateTournament,
+    GetCriteriaConfigs,
+    InitializeQualifyingScores,
+  } from "$wails/go/main/App";
 
   let { open = $bindable(false) } = $props();
   let error = $state("");
@@ -39,6 +43,7 @@
   let randomizeQualifyingOrder = $state(true);
   let criteriaConfigID = $state<number | undefined>(undefined);
   let datePopoverOpen = $state(false);
+  let qualifyingRounds = $state<"1" | "2">("1"); // qualifying rounds in most drifting events is mostly up to 2 rounds
 
   let selectedDate = $state<CalendarDate | undefined>();
   let startingTime = $state("12:00");
@@ -67,8 +72,8 @@
       entrants: string[];
       randomizeQualifyingOrder: boolean;
       criteriaConfigID: number;
-    }) =>
-      CreateTournament({
+    }) => {
+      const tournament = await CreateTournament({
         name,
         size,
         startingDate,
@@ -77,7 +82,10 @@
         randomizeQualifyingOrder,
         qualifyingOrder: [],
         criteriaConfigID,
-      }),
+        qualifyingRounds: Number(qualifyingRounds),
+      });
+      await InitializeQualifyingScores(tournament.id);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["tournaments"],
@@ -90,6 +98,7 @@
       entrantNames = "";
       error = "";
       criteriaConfigID = undefined;
+      qualifyingRounds = "1";
     },
   }));
 
@@ -248,6 +257,18 @@
           placeholder="Enter or select a track"
           bind:value={trackName}
         />
+      </div>
+      <div class="space-y-2 w-full">
+        <Label for="qualifyingRounds">Qualifying Rounds</Label>
+        <Select.Root type="single" bind:value={qualifyingRounds}>
+          <Select.Trigger class="w-full">
+            <Select.Value placeholder="Select qualifying rounds" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="1">1 Round</Select.Item>
+            <Select.Item value="2">2 Rounds</Select.Item>
+          </Select.Content>
+        </Select.Root>
       </div>
       <div class="space-y-2">
         <Label for="Entrants">Entrants</Label>

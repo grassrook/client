@@ -105,7 +105,19 @@ func (r *SQLiteEntrantsRepository) UpdateEntrant(
 	if params.Score != nil {
 		updates = append(
 			updates,
-			"score = CASE WHEN score < ? THEN ? ELSE score END",
+			`score = CASE
+            WHEN ? >= COALESCE(
+                (
+                    SELECT MAX(qs.score)
+                    FROM qualifying_scores qs
+                    WHERE qs.tournament_id = entrants.tournament_id
+                      AND qs.participant_id = entrants.participant_id
+                ),
+                -1
+            )
+            THEN ?
+            ELSE score
+        END`,
 		)
 		args = append(args, *params.Score, *params.Score)
 	}

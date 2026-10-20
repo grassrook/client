@@ -102,8 +102,8 @@ export function UpdateMatchSingleParticipant(arg1) {
   return window['go']['main']['App']['UpdateMatchSingleParticipant'](arg1);
 }
 
-export function UpdateQualifyingScore(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['UpdateQualifyingScore'](arg1, arg2, arg3, arg4);
+export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['UpdateQualifyingScore'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function UpdateTournament(arg1, arg2) {

@@ -19,6 +19,7 @@
     GetAllQualifyingScores,
     SyncTournament,
     UpdateEntrant,
+    UpdateQualifyingScore,
     UpdateTournament,
     UpdateTournamentState,
   } from "$wails/go/main/App";
@@ -75,31 +76,80 @@
     });
   }
 
+  type QualifierMutationReq = {
+    qualifierId: string;
+    status: entrant.Entrant["status"];
+    score?: number;
+  };
+
   const updateQualifierMutation = createMutation(() => ({
-    mutationFn: async ({
-      qualifierId,
-      status,
-    }: {
-      qualifierId: string;
-      status: entrant.Entrant["status"];
-    }) =>
+    mutationFn: async ({ qualifierId, status, score }: QualifierMutationReq) =>
       UpdateEntrant({
         TournamentID: tournament.id,
         EntrantID: qualifierId,
         Status: status,
+        Score: score,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],
       });
+      await queryClient.query({
+        queryKey: ["scores", tournament.id],
+        queryFn: () => GetAllQualifyingScores(tournament.id),
+      });
     },
   }));
 
-  function markAs(id: string, status: entrant.Entrant["status"]) {
-    updateQualifierMutation.mutate({
+  const resetStatuses = ["pending", "not_qualified"];
+
+  async function markAs(
+    id: string,
+    status: entrant.Entrant["status"],
+    participantID: string,
+  ) {
+    if (status === "pending") {
+      await handlePending(participantID);
+    } else if (status === "not_qualified") {
+      await handleNotQualified(participantID);
+    }
+
+    let req: QualifierMutationReq = {
       qualifierId: id,
       status,
-    });
+    };
+
+    if (resetStatuses.includes(status)) {
+      req.score = 0;
+    }
+
+    updateQualifierMutation.mutate(req);
+  }
+
+  async function handleNotQualified(participantID: string) {
+    const qualifyingRounds = tournament.qualifyingRounds;
+
+    await Promise.all(
+      Array.from({ length: qualifyingRounds }, (_, i) =>
+        UpdateQualifyingScore(tournament.id, participantID, i + 1, 0, "scored"),
+      ),
+    );
+  }
+
+  async function handlePending(participantID: string) {
+    const qualifyingRounds = tournament.qualifyingRounds;
+
+    await Promise.all(
+      Array.from({ length: qualifyingRounds }, (_, i) =>
+        UpdateQualifyingScore(
+          tournament.id,
+          participantID,
+          i + 1,
+          0,
+          "pending",
+        ),
+      ),
+    );
   }
 
   let concludeDialogOpen = $state(false);
@@ -168,10 +218,7 @@
   const front = $derived(orderedEntrants.entrants[0]?.participantId);
 
   const concluding = $derived.by(() => {
-    return (
-      !entrants.some((entrant) => entrant.status === "pending") &&
-      !orderedEntrants.hasPendingScores
-    );
+    return !orderedEntrants.hasPendingScores;
   });
 </script>
 
@@ -284,17 +331,25 @@
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onclick={() => markAs(entrant.id, "not_qualified")}
-                    disabled={updateQualifierMutation.isPending}
+                    onclick={() =>
+                      markAs(
+                        entrant.id,
+                        "not_qualified",
+                        entrant.participantId,
+                      )}
+                    disabled={updateQualifierMutation.isPending ||
+                      entrant.status === "not_qualified"}
                   >
                     Set as not qualified
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onclick={() => markAs(entrant.id, "pending")}
-                    disabled={updateQualifierMutation.isPending}
+                    onclick={() =>
+                      markAs(entrant.id, "pending", entrant.participantId)}
+                    disabled={updateQualifierMutation.isPending ||
+                      entrant.status === "pending"}
                   >
-                    Set as pending
+                    Reset
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

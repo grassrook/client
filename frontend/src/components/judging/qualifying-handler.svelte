@@ -140,6 +140,7 @@
       front.participantId,
       Number(qualifyingRound),
       score,
+      "scored",
     );
 
     await updateEntrantMutation.mutateAsync({

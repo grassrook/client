@@ -55,7 +55,7 @@ export function UpdateEntrant(arg1:repository.UpdateEntrantParams):Promise<void>
 
 export function UpdateMatchSingleParticipant(arg1:repository.UpdateMatchSingleParticipantParams):Promise<void>;
 
-export function UpdateQualifyingScore(arg1:string,arg2:string,arg3:number,arg4:number):Promise<void>;
+export function UpdateQualifyingScore(arg1:string,arg2:string,arg3:number,arg4:number,arg5:string):Promise<void>;
 
 export function UpdateTournament(arg1:string,arg2:repository.UpdateTournamentRequest):Promise<void>;
 

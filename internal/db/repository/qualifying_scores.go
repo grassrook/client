@@ -18,7 +18,7 @@ type QualfyingScoresRepository interface {
 		participantID string,
 	) ([]qualifyingscore.QualifyingScore, error)
 	InitializeScores(ctx context.Context, tournamentID string) error
-	UpdateScore(ctx context.Context, tournamentID, participantID string, round int, score float64) error
+	UpdateScore(ctx context.Context, tournamentID, participantID string, round int, score float64, status string) error
 }
 
 type SQLiteQualifyingScoresRepository struct {
@@ -265,10 +265,11 @@ func (r *SQLiteQualifyingScoresRepository) UpdateScore(
 	participantID string,
 	round int,
 	score float64,
+	status string,
 ) error {
 	query := `
         UPDATE qualifying_scores
-        SET score = ?, updated_at = ?, status = 'scored'
+        SET score = ?, updated_at = ?, status = ?
         WHERE tournament_id = ?
           AND participant_id = ?
           AND round = ?
@@ -279,6 +280,7 @@ func (r *SQLiteQualifyingScoresRepository) UpdateScore(
 		query,
 		score,
 		time.Now().Unix(),
+		status,
 		tournamentID,
 		participantID,
 		round,

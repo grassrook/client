@@ -235,18 +235,20 @@
                   <Badge variant="secondary">Scored</Badge>
                 {/if}
               </div>
-              <small class="flex gap-1 items-center text-muted-foreground">
-                {#each entrant.scores as score, idx (idx)}
-                  <span
-                    >Round {idx + 1}: {score.status === "pending"
-                      ? "—"
-                      : score.score}</span
-                  >
-                  {#if idx + 1 != entrant.scores.length}
-                    <Separator orientation="vertical" />
-                  {/if}
-                {/each}
-              </small>
+              {#if tournament.qualifyingRounds > 1}
+                <small class="flex gap-1 items-center text-muted-foreground">
+                  {#each entrant.scores as score, idx (idx)}
+                    <span
+                      >Round {idx + 1}: {score.status === "pending"
+                        ? "—"
+                        : score.score}</span
+                    >
+                    {#if idx + 1 != entrant.scores.length}
+                      <Separator orientation="vertical" />
+                    {/if}
+                  {/each}
+                </small>
+              {/if}
             </div>
           </div>
 

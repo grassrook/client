@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertCircle, Plus,RefreshCw, Trophy } from "@lucide/svelte";
+  import { AlertCircle, Plus, RefreshCw, Trophy } from "@lucide/svelte";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 
   import { Badge } from "$src/components/ui/badge";
@@ -120,7 +120,7 @@
     {/each}
   </div>
 {:else if isError}
-  <Empty class="min-h-64 border border-dashed border-destructive/40">
+  <Empty class="mx-auto max-w-6xl min-h-64">
     <EmptyHeader>
       <EmptyMedia variant="icon"><AlertCircle aria-hidden="true" /></EmptyMedia>
       <EmptyTitle>We couldn't load tournaments</EmptyTitle>
@@ -136,7 +136,7 @@
     {/if}
   </Empty>
 {:else if tournaments.length === 0}
-  <Empty class="min-h-80 border border-dashed">
+  <Empty class="mx-auto max-w-6xl min-h-80">
     <EmptyHeader>
       <EmptyMedia variant="icon"><Trophy aria-hidden="true" /></EmptyMedia>
       <EmptyTitle>Your competition board is empty</EmptyTitle>

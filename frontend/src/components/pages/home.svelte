@@ -7,6 +7,7 @@
 
   import { GetTournaments } from "$wails/go/main/App";
   import { onMount } from "svelte";
+  import Separator from "../ui/separator/separator.svelte";
 
   let createTournamentOpen = $state(false);
 
@@ -22,9 +23,9 @@
 </script>
 
 {#if mounted}
-  <div class="w-full space-y-8" in:fade={{ duration: 300 }}>
+  <div in:fade={{ duration: 300 }}>
     <header
-      class="flex flex-col gap-5 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"
+      class="flex max-w-6xl mx-auto flex-col gap-5 pb-6 sm:flex-row sm:items-end sm:justify-between px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
     >
       <div class="space-y-2">
         <p class="text-sm font-medium text-muted-foreground">
@@ -38,6 +39,8 @@
       </div>
       <CreateDialog bind:open={createTournamentOpen} />
     </header>
+
+    <Separator />
 
     <Grid
       tournaments={tournamentsQuery.data ?? []}

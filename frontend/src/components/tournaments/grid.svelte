@@ -153,7 +153,7 @@
     {/if}
   </Empty>
 {:else}
-  <div class="w-full space-y-6">
+  <div class="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
     <div
       class="flex flex-col gap-4 pb-5 sm:flex-row sm:items-end sm:justify-between"
     >

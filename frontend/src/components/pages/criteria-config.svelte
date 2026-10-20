@@ -127,8 +127,10 @@
 
 {#if mounted}
   <div in:fade={{ duration: 300 }}>
-    <div class="space-y-6">
-      <div class="flex justify-between items-end">
+    <div>
+      <div
+        class="max-w-6xl mx-auto flex justify-between items-end px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+      >
         <div>
           <h1 class="text-2xl font-semibold">Criteria Configs</h1>
           <p class="text-muted-foreground mt-1 text-sm">
@@ -145,7 +147,7 @@
 
       <Separator />
 
-      <div>
+      <div class="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <h2 class="text-lg font-semibold">Existing Configs</h2>
         <p class="text-muted-foreground mt-1 text-sm">
           {configsQuery.data?.length ?? 0} configurations
@@ -165,98 +167,100 @@
           Failed to load configs: {String(configsQuery.error)}
         </p>
       {:else}
-        <Card.Root>
-          <Card.Content>
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="w-50">Name</Table.Head>
-                  <Table.Head>Categories</Table.Head>
-                  <Table.Head class="w-50 text-right">Actions</Table.Head>
-                </Table.Row>
-              </Table.Header>
-
-              <Table.Body>
-                {#each configsQuery.data ?? [] as config (config.id)}
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card.Root class="">
+            <Card.Content>
+              <Table.Root>
+                <Table.Header>
                   <Table.Row>
-                    <Table.Cell class="font-medium">
-                      {config.name}
-                    </Table.Cell>
+                    <Table.Head class="w-50">Name</Table.Head>
+                    <Table.Head>Categories</Table.Head>
+                    <Table.Head class="w-50 text-right">Actions</Table.Head>
+                  </Table.Row>
+                </Table.Header>
 
-                    <Table.Cell>
-                      <div class="flex flex-wrap gap-2">
-                        {#each [config.categories.common, config.categories.lead, config.categories.chase] as category}
-                          <Badge variant="secondary">
-                            {category.label} · {Math.round(
-                              category.tags.reduce(
-                                (total, tag) =>
-                                  total +
-                                  (tag.type !== "deduction"
-                                    ? (tag.max ?? 0)
-                                    : 0),
-                                0,
-                              ),
-                            )}
-                          </Badge>
-                        {/each}
-                      </div>
-                    </Table.Cell>
+                <Table.Body>
+                  {#each configsQuery.data ?? [] as config (config.id)}
+                    <Table.Row>
+                      <Table.Cell class="font-medium">
+                        {config.name}
+                      </Table.Cell>
 
-                    <Table.Cell class="text-right">
-                      <DropdownMenu.Root>
-                        <DropdownMenu.Trigger>
-                          {#snippet child({ props })}
-                            <Button
-                              {...props}
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Open actions menu"
+                      <Table.Cell>
+                        <div class="flex flex-wrap gap-2">
+                          {#each [config.categories.common, config.categories.lead, config.categories.chase] as category}
+                            <Badge variant="secondary">
+                              {category.label} · {Math.round(
+                                category.tags.reduce(
+                                  (total, tag) =>
+                                    total +
+                                    (tag.type !== "deduction"
+                                      ? (tag.max ?? 0)
+                                      : 0),
+                                  0,
+                                ),
+                              )}
+                            </Badge>
+                          {/each}
+                        </div>
+                      </Table.Cell>
+
+                      <Table.Cell class="text-right">
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Open actions menu"
+                              >
+                                <EllipsisVertical class="size-4" />
+                              </Button>
+                            {/snippet}
+                          </DropdownMenu.Trigger>
+
+                          <DropdownMenu.Content align="end">
+                            <DropdownMenu.Item
+                              onclick={() => openUpdateDialog(config)}
                             >
-                              <EllipsisVertical class="size-4" />
-                            </Button>
-                          {/snippet}
-                        </DropdownMenu.Trigger>
+                              Edit
+                            </DropdownMenu.Item>
 
-                        <DropdownMenu.Content align="end">
-                          <DropdownMenu.Item
-                            onclick={() => openUpdateDialog(config)}
-                          >
-                            Edit
-                          </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onclick={() => copyMutation.mutate(config.id)}
+                            >
+                              Copy
+                            </DropdownMenu.Item>
 
-                          <DropdownMenu.Item
-                            onclick={() => copyMutation.mutate(config.id)}
-                          >
-                            Copy
-                          </DropdownMenu.Item>
+                            <DropdownMenu.Separator />
 
-                          <DropdownMenu.Separator />
-
-                          <DropdownMenu.Item
-                            variant="destructive"
-                            onclick={() => deleteConfig(config)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            Delete
-                          </DropdownMenu.Item>
-                        </DropdownMenu.Content>
-                      </DropdownMenu.Root>
-                    </Table.Cell>
-                  </Table.Row>
-                {:else}
-                  <Table.Row>
-                    <Table.Cell
-                      colspan={3}
-                      class="text-muted-foreground h-24 text-center"
-                    >
-                      No criteria configs yet.
-                    </Table.Cell>
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table.Root>
-          </Card.Content>
-        </Card.Root>
+                            <DropdownMenu.Item
+                              variant="destructive"
+                              onclick={() => deleteConfig(config)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              Delete
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                      </Table.Cell>
+                    </Table.Row>
+                  {:else}
+                    <Table.Row>
+                      <Table.Cell
+                        colspan={3}
+                        class="text-muted-foreground h-24 text-center"
+                      >
+                        No criteria configs yet.
+                      </Table.Cell>
+                    </Table.Row>
+                  {/each}
+                </Table.Body>
+              </Table.Root>
+            </Card.Content>
+          </Card.Root>
+        </div>
       {/if}
     </div>
   </div>

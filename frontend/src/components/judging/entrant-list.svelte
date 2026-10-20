@@ -1,6 +1,10 @@
 <script lang="ts">
   import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import {
+    createMutation,
+    createQuery,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
 
   import { Badge } from "$src/components/ui/badge";
   import { Button } from "$src/components/ui/button";
@@ -12,8 +16,10 @@
   } from "$src/components/ui/dropdown-menu";
   import {
     ConcludeQualifers,
+    GetAllQualifyingScores,
     SyncTournament,
     UpdateEntrant,
+    UpdateQualifyingScore,
     UpdateTournament,
     UpdateTournamentState,
   } from "$wails/go/main/App";
@@ -32,6 +38,7 @@
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
+  import Separator from "../ui/separator/separator.svelte";
 
   let {
     tournament,
@@ -42,6 +49,11 @@
   } = $props();
 
   const queryClient = useQueryClient();
+
+  const scores = createQuery(() => ({
+    queryKey: ["scores", tournament.id],
+    queryFn: () => GetAllQualifyingScores(tournament.id),
+  }));
 
   const updateTournamentMutation = createMutation(() => ({
     mutationFn: async ({ qualifyingOrder }: { qualifyingOrder: string[] }) =>
@@ -54,41 +66,90 @@
   }));
 
   function moveToFirst(idx: number) {
-    const [entrant] = orderedEntrants.splice(idx, 1);
+    const [entrant] = orderedEntrants.entrants.splice(idx, 1);
 
     if (!entrant) return;
 
-    const reordered = [entrant, ...orderedEntrants];
+    const reordered = [entrant, ...orderedEntrants.entrants];
     updateTournamentMutation.mutate({
       qualifyingOrder: reordered.map((entrant) => entrant.participantId),
     });
   }
 
+  type QualifierMutationReq = {
+    qualifierId: string;
+    status: entrant.Entrant["status"];
+    score?: number;
+  };
+
   const updateQualifierMutation = createMutation(() => ({
-    mutationFn: async ({
-      qualifierId,
-      status,
-    }: {
-      qualifierId: string;
-      status: entrant.Entrant["status"];
-    }) =>
+    mutationFn: async ({ qualifierId, status, score }: QualifierMutationReq) =>
       UpdateEntrant({
         TournamentID: tournament.id,
         EntrantID: qualifierId,
         Status: status,
+        Score: score,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],
       });
+      await queryClient.query({
+        queryKey: ["scores", tournament.id],
+        queryFn: () => GetAllQualifyingScores(tournament.id),
+      });
     },
   }));
 
-  function markAs(id: string, status: entrant.Entrant["status"]) {
-    updateQualifierMutation.mutate({
+  const resetStatuses = ["pending", "not_qualified"];
+
+  async function markAs(
+    id: string,
+    status: entrant.Entrant["status"],
+    participantID: string,
+  ) {
+    if (status === "pending") {
+      await handlePending(participantID);
+    } else if (status === "not_qualified") {
+      await handleNotQualified(participantID);
+    }
+
+    let req: QualifierMutationReq = {
       qualifierId: id,
       status,
-    });
+    };
+
+    if (resetStatuses.includes(status)) {
+      req.score = 0;
+    }
+
+    updateQualifierMutation.mutate(req);
+  }
+
+  async function handleNotQualified(participantID: string) {
+    const qualifyingRounds = tournament.qualifyingRounds;
+
+    await Promise.all(
+      Array.from({ length: qualifyingRounds }, (_, i) =>
+        UpdateQualifyingScore(tournament.id, participantID, i + 1, 0, "scored"),
+      ),
+    );
+  }
+
+  async function handlePending(participantID: string) {
+    const qualifyingRounds = tournament.qualifyingRounds;
+
+    await Promise.all(
+      Array.from({ length: qualifyingRounds }, (_, i) =>
+        UpdateQualifyingScore(
+          tournament.id,
+          participantID,
+          i + 1,
+          0,
+          "pending",
+        ),
+      ),
+    );
   }
 
   let concludeDialogOpen = $state(false);
@@ -122,18 +183,42 @@
 
   const orderedEntrants = $derived.by(() => {
     const order = tournament.qualifying_order.split(",").map((id) => id.trim());
+
     const byParticipantId = new Map(
       entrants.map((entrant) => [entrant.participantId, entrant]),
     );
-    return order
-      .map((id) => byParticipantId.get(id))
-      .filter((entrant): entrant is entrant.Entrant => entrant !== undefined);
+
+    const scoresByParticipantId = new Map(
+      (scores.data ?? []).map((data) => [data.participantId, data.scores]),
+    );
+
+    const ordered = order
+      .map((id) => {
+        const entrant = byParticipantId.get(id);
+
+        if (!entrant) return undefined;
+
+        return {
+          ...entrant,
+          scores: scoresByParticipantId.get(entrant.participantId) ?? [],
+        };
+      })
+      .filter((entrant) => entrant !== undefined);
+
+    const hasPendingScores = ordered
+      .flatMap((entrant) => entrant.scores)
+      .some((score) => score.status === "pending");
+
+    return {
+      entrants: ordered,
+      hasPendingScores,
+    };
   });
 
-  const front = $derived(orderedEntrants[0]?.participantId);
+  const front = $derived(orderedEntrants.entrants[0]?.participantId);
 
   const concluding = $derived.by(() => {
-    return !entrants.some((entrant) => entrant.status === "pending");
+    return !orderedEntrants.hasPendingScores;
   });
 </script>
 
@@ -143,15 +228,15 @@
       <h3 class="font-semibold tracking-tight">Entrants</h3>
       <p class="text-sm text-muted-foreground">Current qualification scores</p>
     </div>
-    {#if orderedEntrants.length > 0}
+    {#if orderedEntrants.entrants.length > 0}
       <span class="text-xs font-medium text-muted-foreground">
-        {orderedEntrants.length}
-        {orderedEntrants.length === 1 ? "entrant" : "entrants"}
+        {orderedEntrants.entrants.length}
+        {orderedEntrants.entrants.length === 1 ? "entrant" : "entrants"}
       </span>
     {/if}
   </div>
 
-  {#if orderedEntrants.length === 0}
+  {#if orderedEntrants.entrants.length === 0}
     <Empty class="min-h-40 border-dashed py-10">
       <EmptyHeader>
         <EmptyTitle>No entrants yet</EmptyTitle>
@@ -162,7 +247,7 @@
     </Empty>
   {:else}
     <div class="divide-y overflow-hidden rounded-lg border bg-card">
-      {#each orderedEntrants as entrant, idx (entrant.id)}
+      {#each orderedEntrants.entrants as entrant, idx (entrant.id)}
         <button
           type="button"
           class={[
@@ -181,20 +266,35 @@
             </span>
 
             <div class="min-w-0 space-y-1">
-              <p class="truncate font-medium">{entrant.name}</p>
-
-              {#if entrant.status === "pending"}
-                {#if idx === 0}
-                  <Badge variant="default">On Going</Badge>
-                {:else}
-                  <Badge variant="outline">Pending</Badge>
+              <div class="items-center flex gap-2">
+                <p class="truncate font-medium">{entrant.name}</p>
+                {#if entrant.status === "pending"}
+                  {#if idx === 0}
+                    <Badge variant="default">On Going</Badge>
+                  {:else}
+                    <Badge variant="outline">Pending</Badge>
+                  {/if}
+                {:else if entrant.status === "qualified"}
+                  <Badge>Qualified</Badge>
+                {:else if entrant.status === "not_qualified"}
+                  <Badge variant="destructive">Not Qualified</Badge>
+                {:else if entrant.status === "scored"}
+                  <Badge variant="secondary">Scored</Badge>
                 {/if}
-              {:else if entrant.status === "qualified"}
-                <Badge>Qualified</Badge>
-              {:else if entrant.status === "not_qualified"}
-                <Badge variant="destructive">Not Qualified</Badge>
-              {:else if entrant.status === "scored"}
-                <Badge variant="secondary">Scored</Badge>
+              </div>
+              {#if tournament.qualifyingRounds > 1}
+                <small class="flex gap-1 items-center text-muted-foreground">
+                  {#each entrant.scores as score, idx (idx)}
+                    <span
+                      >Round {idx + 1}: {score.status === "pending"
+                        ? "—"
+                        : score.score}</span
+                    >
+                    {#if idx + 1 != entrant.scores.length}
+                      <Separator orientation="vertical" />
+                    {/if}
+                  {/each}
+                </small>
               {/if}
             </div>
           </div>
@@ -203,7 +303,7 @@
             <span
               class="min-w-10 text-right text-lg font-semibold tabular-nums"
             >
-              {entrant.status === "pending" ? "TBA" : entrant.score}
+              {entrant.status === "pending" ? "—" : entrant.score}
             </span>
 
             <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -231,17 +331,25 @@
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onclick={() => markAs(entrant.id, "not_qualified")}
-                    disabled={updateQualifierMutation.isPending}
+                    onclick={() =>
+                      markAs(
+                        entrant.id,
+                        "not_qualified",
+                        entrant.participantId,
+                      )}
+                    disabled={updateQualifierMutation.isPending ||
+                      entrant.status === "not_qualified"}
                   >
                     Set as not qualified
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
-                    onclick={() => markAs(entrant.id, "pending")}
-                    disabled={updateQualifierMutation.isPending}
+                    onclick={() =>
+                      markAs(entrant.id, "pending", entrant.participantId)}
+                    disabled={updateQualifierMutation.isPending ||
+                      entrant.status === "pending"}
                   >
-                    Set as pending
+                    Reset
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

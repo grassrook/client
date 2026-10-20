@@ -38,6 +38,10 @@ export function GetActiveMatches(arg1) {
   return window['go']['main']['App']['GetActiveMatches'](arg1);
 }
 
+export function GetAllQualifyingScores(arg1) {
+  return window['go']['main']['App']['GetAllQualifyingScores'](arg1);
+}
+
 export function GetCriteriaConfigByID(arg1) {
   return window['go']['main']['App']['GetCriteriaConfigByID'](arg1);
 }
@@ -70,6 +74,10 @@ export function HasChallongeAPIKey() {
   return window['go']['main']['App']['HasChallongeAPIKey']();
 }
 
+export function InitializeQualifyingScores(arg1) {
+  return window['go']['main']['App']['InitializeQualifyingScores'](arg1);
+}
+
 export function ResetBattle(arg1, arg2) {
   return window['go']['main']['App']['ResetBattle'](arg1, arg2);
 }
@@ -92,6 +100,10 @@ export function UpdateEntrant(arg1) {
 
 export function UpdateMatchSingleParticipant(arg1) {
   return window['go']['main']['App']['UpdateMatchSingleParticipant'](arg1);
+}
+
+export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['UpdateQualifyingScore'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function UpdateTournament(arg1, arg2) {

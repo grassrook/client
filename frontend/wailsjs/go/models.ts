@@ -25,6 +25,57 @@ export namespace entrant {
 
 }
 
+export namespace qualifyingscore {
+	
+	export class ScoreData {
+	    score: number;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScoreData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.score = source["score"];
+	        this.status = source["status"];
+	    }
+	}
+	export class Data {
+	    participantId: string;
+	    scores: ScoreData[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Data(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.participantId = source["participantId"];
+	        this.scores = this.convertValues(source["scores"], ScoreData);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace repository {
 	
 	export class ActiveBattle {
@@ -56,6 +107,7 @@ export namespace repository {
 	    randomizeQualifyingOrder: boolean;
 	    qualifyingOrder: string[];
 	    criteriaConfigID: number;
+	    qualifyingRounds: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new CreateTournamentRequest(source);
@@ -71,6 +123,7 @@ export namespace repository {
 	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
 	        this.qualifyingOrder = source["qualifyingOrder"];
 	        this.criteriaConfigID = source["criteriaConfigID"];
+	        this.qualifyingRounds = source["qualifyingRounds"];
 	    }
 	}
 	export class CriteriaTag {
@@ -308,6 +361,7 @@ export namespace tournament {
 	    progress: number;
 	    criteriaConfig: string;
 	    finalized: boolean;
+	    qualifyingRounds: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Tournament(source);
@@ -326,6 +380,7 @@ export namespace tournament {
 	        this.progress = source["progress"];
 	        this.criteriaConfig = source["criteriaConfig"];
 	        this.finalized = source["finalized"];
+	        this.qualifyingRounds = source["qualifyingRounds"];
 	    }
 	}
 

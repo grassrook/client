@@ -1,8 +1,17 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import {
+    createMutation,
+    createQuery,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
 
   import type { Judgement } from "$src/lib/judging.svelte";
-  import { UpdateEntrant,UpdateTournament } from "$wails/go/main/App";
+  import {
+    GetAllQualifyingScores,
+    UpdateEntrant,
+    UpdateQualifyingScore,
+    UpdateTournament,
+  } from "$wails/go/main/App";
   import type { entrant, tournament } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
@@ -12,7 +21,7 @@
   import CardTitle from "../ui/card/card-title.svelte";
 
   let {
-    tournament = $bindable(),
+    tournament,
     judgement,
     entrants,
   }: {
@@ -56,6 +65,30 @@
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["tournament", tournament.id],
+      });
+
+      const result = await queryClient.query({
+        queryKey: ["scores", tournament.id],
+        queryFn: () => GetAllQualifyingScores(tournament.id),
+      });
+
+      const nextFront = tournament.qualifying_order
+        .split(",")
+        .map((id) => id.trim())[0];
+
+      const nextScores =
+        result.find((data) => data.participantId === nextFront)?.scores ?? [];
+
+      const nextRound = Array.from(
+        { length: tournament.qualifyingRounds },
+        (_, i) => i + 1,
+      ).find((round) => nextScores[round - 1]?.status !== "scored");
+
+      if (nextRound !== undefined) {
+        qualifyingRound = String(nextRound) as QualifyingRound;
+      }
     },
   }));
 
@@ -88,26 +121,45 @@
     }
   }
 
+  type QualifyingRound = "1" | "2";
+  let qualifyingRound = $state<QualifyingRound>("1");
+
   async function handleQualifying(score: number) {
     const front = orderedEntrants[0];
+    const order = tournament.qualifying_order.split(",").map((id) => id.trim());
+    const first = order.shift();
+    if (first) {
+      order.push(first);
+    }
+    await updateTournamentMutation.mutateAsync({
+      qualifyingOrder: order,
+    });
+
+    await UpdateQualifyingScore(
+      tournament.id,
+      front.participantId,
+      Number(qualifyingRound),
+      score,
+      "scored",
+    );
 
     await updateEntrantMutation.mutateAsync({
       entrantId: front.id,
       score,
       status: "scored",
     });
-
-    const order = tournament.qualifying_order.split(",").map((id) => id.trim());
-
-    const first = order.shift();
-    if (first) {
-      order.push(first);
-    }
-
-    await updateTournamentMutation.mutateAsync({
-      qualifyingOrder: order,
-    });
   }
+
+  const scores = createQuery(() => ({
+    queryKey: ["scores", tournament.id],
+    queryFn: () => GetAllQualifyingScores(tournament.id),
+  }));
+
+  const frontScores = $derived(
+    scores.data?.find(
+      (data) => data.participantId === orderedEntrants[0]?.participantId,
+    )?.scores ?? [],
+  );
 </script>
 
 <Card class="gap-0 border-border/70 shadow-none">
@@ -124,6 +176,33 @@
       >
       <strong class="text-sm tabular-nums">{currentScore.lead}</strong>
     </div>
+
+    {#if tournament.qualifyingRounds > 1}
+      <div class="flex flex-col gap-2 space-2">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="text-sm font-medium">Qualifying Round </label>
+        <div class="flex flex-wrap gap-2">
+          {#each Array.from({ length: tournament.qualifyingRounds }, (_, i) => i + 1) as round (round)}
+            {@const isScored = frontScores[round - 1]?.status === "scored"}
+
+            <Button
+              type="button"
+              variant={isScored
+                ? "ghost"
+                : qualifyingRound === String(round)
+                  ? "default"
+                  : "outline"}
+              disabled={isScored}
+              onclick={() =>
+                (qualifyingRound = String(round) as QualifyingRound)}
+              aria-pressed={qualifyingRound === String(round)}
+            >
+              Round {round}
+            </Button>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <Button
       class="h-11 w-full"

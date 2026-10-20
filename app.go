@@ -8,6 +8,7 @@ import (
 	"judginginternal/internal/db"
 	"judginginternal/internal/db/repository"
 	"judginginternal/internal/models/entrant"
+	qualifyingscore "judginginternal/internal/models/qualifying_score"
 	"judginginternal/internal/models/tournament"
 	"net/http"
 	"path"
@@ -19,13 +20,14 @@ var client *sql.DB = nil
 
 // App struct
 type App struct {
-	ctx                context.Context
-	cfg                *config.Config
-	tournamentRepo     repository.TournamentRepository
-	matchesRepo        repository.MatchesRepository
-	bracketRepo        repository.BracketRepository
-	entrantsRepo       repository.EntrantsRepository
-	criteriaConfigRepo repository.CriteriaConfigRepository
+	ctx                  context.Context
+	cfg                  *config.Config
+	tournamentRepo       repository.TournamentRepository
+	matchesRepo          repository.MatchesRepository
+	bracketRepo          repository.BracketRepository
+	entrantsRepo         repository.EntrantsRepository
+	criteriaConfigRepo   repository.CriteriaConfigRepository
+	qualifyingScoresRepo repository.QualfyingScoresRepository
 }
 
 // NewApp creates a new App application struct
@@ -61,6 +63,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.criteriaConfigRepo = &repository.SQLiteCriteriaConfigRepository{
+		DB: client,
+	}
+
+	a.qualifyingScoresRepo = &repository.SQLiteQualifyingScoresRepository{
 		DB: client,
 	}
 
@@ -273,4 +279,20 @@ func (a *App) UpdateCriteriaConfig(id int, config repository.CriteriaConfig) err
 
 func (a *App) DeleteCriteriaConfig(id int) error {
 	return a.criteriaConfigRepo.Delete(id)
+}
+
+func (a *App) InitializeQualifyingScores(tournamentID string) error {
+	return a.qualifyingScoresRepo.InitializeScores(a.ctx, tournamentID)
+}
+
+func (a *App) GetAllQualifyingScores(tournamentID string) ([]qualifyingscore.Data, error) {
+	data, err := a.qualifyingScoresRepo.FindAllScores(a.ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, round int, score float64, status string) error {
+	return a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
 }

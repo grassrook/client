@@ -1,35 +1,37 @@
 <script lang="ts">
   import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+
   import { Badge } from "$src/components/ui/badge";
+  import { Button } from "$src/components/ui/button";
   import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "$src/components/ui/dropdown-menu";
-  import { Button } from "$src/components/ui/button";
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import {
-    UpdateTournament,
-    UpdateEntrant,
-    UpdateTournamentState,
-    SyncTournament,
     ConcludeQualifers,
+    SyncTournament,
+    UpdateEntrant,
+    UpdateTournament,
+    UpdateTournamentState,
   } from "$wails/go/main/App";
   import type { entrant, tournament } from "$wails/go/models";
+
   import AlertDialog from "../ui/alert-dialog/alert-dialog.svelte";
-  import AlertDialogTrigger from "../ui/alert-dialog/alert-dialog-trigger.svelte";
+  import AlertDialogAction from "../ui/alert-dialog/alert-dialog-action.svelte";
+  import AlertDialogCancel from "../ui/alert-dialog/alert-dialog-cancel.svelte";
   import AlertDialogContent from "../ui/alert-dialog/alert-dialog-content.svelte";
-  import AlertDialogHeader from "../ui/alert-dialog/alert-dialog-header.svelte";
-  import AlertDialogTitle from "../ui/alert-dialog/alert-dialog-title.svelte";
   import AlertDialogDescription from "../ui/alert-dialog/alert-dialog-description.svelte";
   import AlertDialogFooter from "../ui/alert-dialog/alert-dialog-footer.svelte";
-  import AlertDialogCancel from "../ui/alert-dialog/alert-dialog-cancel.svelte";
-  import AlertDialogAction from "../ui/alert-dialog/alert-dialog-action.svelte";
+  import AlertDialogHeader from "../ui/alert-dialog/alert-dialog-header.svelte";
+  import AlertDialogTitle from "../ui/alert-dialog/alert-dialog-title.svelte";
+  import AlertDialogTrigger from "../ui/alert-dialog/alert-dialog-trigger.svelte";
   import Empty from "../ui/empty/empty.svelte";
+  import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
-  import EmptyDescription from "../ui/empty/empty-description.svelte";
 
   let {
     tournament,

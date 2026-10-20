@@ -1,6 +1,7 @@
 <script lang="ts">
-  import * as Breadcrumb from "$src/components/ui/breadcrumb";
   import { link } from "svelte-spa-router";
+
+  import * as Breadcrumb from "$src/components/ui/breadcrumb";
 
   type BreadcrumbItem = {
     label: string;

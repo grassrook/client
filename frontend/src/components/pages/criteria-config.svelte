@@ -1,28 +1,27 @@
 <script lang="ts">
-  import CriteriaConfigDialog from "$src/components/criteria-config/criteria-dialog.svelte";
-
-  import {
-    GetCriteriaConfigs,
-    DeleteCriteriaConfig,
-    CopyCriteriaConfigById,
-  } from "$wails/go/main/App";
-  import { repository } from "$wails/go/models";
+  import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
   import {
     createMutation,
     createQuery,
     useQueryClient,
   } from "@tanstack/svelte-query";
-
-  import * as AlertDialog from "$src/components/ui/alert-dialog";
-  import * as Table from "$src/components/ui/table";
-  import * as Card from "$src/components/ui/card";
-  import { Button } from "$src/components/ui/button";
-  import { Badge } from "$src/components/ui/badge";
-  import { Separator } from "$src/components/ui/separator";
-  import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
-  import * as DropdownMenu from "$src/components/ui/dropdown-menu";
-  import { fade } from "svelte/transition";
   import { onMount } from "svelte";
+  import { fade } from "svelte/transition";
+
+  import CriteriaConfigDialog from "$src/components/criteria-config/criteria-dialog.svelte";
+  import * as AlertDialog from "$src/components/ui/alert-dialog";
+  import { Badge } from "$src/components/ui/badge";
+  import { Button } from "$src/components/ui/button";
+  import * as Card from "$src/components/ui/card";
+  import * as DropdownMenu from "$src/components/ui/dropdown-menu";
+  import { Separator } from "$src/components/ui/separator";
+  import * as Table from "$src/components/ui/table";
+  import {
+    CopyCriteriaConfigById,
+    DeleteCriteriaConfig,
+    GetCriteriaConfigs,
+  } from "$wails/go/main/App";
+  import { repository } from "$wails/go/models";
 
   const queryClient = useQueryClient();
 
@@ -188,7 +187,7 @@
 
                       <Table.Cell>
                         <div class="flex flex-wrap gap-2">
-                          {#each [config.categories.common, config.categories.lead, config.categories.chase] as category}
+                          {#each [config.categories.common, config.categories.lead, config.categories.chase] as category, idx (idx)}
                             <Badge variant="secondary">
                               {category.label} · {Math.round(
                                 category.tags.reduce(

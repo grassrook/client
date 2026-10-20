@@ -1,5 +1,19 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
+  import { useQueryClient } from "@tanstack/svelte-query";
+  import { capitalize } from "es-toolkit/string";
+
+  import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "$src/components/ui/alert-dialog";
   import { Badge } from "$src/components/ui/badge";
   import {
     Card,
@@ -13,34 +27,21 @@
     TabsList,
     TabsTrigger,
   } from "$src/components/ui/tabs";
-  import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-  } from "$src/components/ui/alert-dialog";
-  import { capitalize } from "es-toolkit/string";
+  import type { Judgement } from "$src/lib/judging.svelte";
   import { Stage } from "$src/lib/stage.svelte";
   import {
-    ResetBattle,
     ConcludeBattle,
+    ResetBattle,
     SyncTournament,
     UpdateTournamentState,
-    UpdateTournament,
   } from "$wails/go/main/App";
-  import { tournament, type repository } from "$wails/go/models";
-  import type { Judgement } from "$src/lib/judging.svelte";
+  import { type repository } from "$wails/go/models";
+
   import Button from "../ui/button/button.svelte";
-  import { useQueryClient } from "@tanstack/svelte-query";
   import Empty from "../ui/empty/empty.svelte";
+  import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
-  import EmptyDescription from "../ui/empty/empty-description.svelte";
 
   type Battles = repository.ActiveBattle[];
 

@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { link } from "svelte-spa-router";
+  import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right";
   import CalendarDays from "@lucide/svelte/icons/calendar-days";
   import ExternalLink from "@lucide/svelte/icons/external-link";
   import Flag from "@lucide/svelte/icons/flag";
   import GitBranch from "@lucide/svelte/icons/git-branch";
-  import ArrowUpRight from "@lucide/svelte/icons/arrow-up-right";
   import Trash2 from "@lucide/svelte/icons/trash-2";
+  import { link } from "svelte-spa-router";
+
   import { Badge } from "$src/components/ui/badge";
+  import type { tournament } from "$wails/go/models";
+
   import Button, { buttonVariants } from "../ui/button/button.svelte";
   import Card from "../ui/card/card.svelte";
   import CardContent from "../ui/card/card-content.svelte";
   import Progress from "../ui/progress/progress.svelte";
-  import type { tournament } from "$wails/go/models";
 
   let {
     tournament,
@@ -19,7 +21,7 @@
     position,
   }: {
     tournament: tournament.Tournament;
-    openDeleteDialog(tournament: any): void;
+    openDeleteDialog(tournament: tournament.Tournament): void;
     position: number;
   } = $props();
 </script>

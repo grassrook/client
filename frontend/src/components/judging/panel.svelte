@@ -1,17 +1,18 @@
 <script lang="ts">
-  import type { Judgement } from "$src/lib/judging.svelte";
   import type { Snippet } from "svelte";
-  import type { Stage } from "$src/lib/stage.svelte";
 
   import Empty from "$src/components/ui/empty/empty.svelte";
+  import EmptyDescription from "$src/components/ui/empty/empty-description.svelte";
   import EmptyHeader from "$src/components/ui/empty/empty-header.svelte";
   import EmptyMedia from "$src/components/ui/empty/empty-media.svelte";
   import EmptyTitle from "$src/components/ui/empty/empty-title.svelte";
-  import EmptyDescription from "$src/components/ui/empty/empty-description.svelte";
   import Spinner from "$src/components/ui/spinner/spinner.svelte";
+  import type { Judgement } from "$src/lib/judging.svelte";
+  import type { Stage } from "$src/lib/stage.svelte";
+  import type { repository,tournament } from "$wails/go/models";
+
   import CommonCriteria from "./common-criteria.svelte";
   import CriteriaWrapper from "./criteria-wrapper.svelte";
-  import type { tournament, repository } from "$wails/go/models";
 
   let {
     tournament,

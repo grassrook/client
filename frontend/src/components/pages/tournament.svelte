@@ -1,24 +1,25 @@
 <script lang="ts">
   // TOOD (important): LOADING STATE FOR tournament, matches, activeBattles, entrants
   import { createQuery } from "@tanstack/svelte-query";
+  import { onMount } from "svelte";
+  import { fade } from "svelte/transition";
 
+  import { Judgement } from "$src/lib/judging.svelte";
+  import { Stage } from "$src/lib/stage.svelte";
   import {
-    GetTournament,
+    GetActiveMatches,
     GetEntrants,
     GetMatches,
-    GetActiveMatches,
+    GetTournament,
   } from "$wails/go/main/App";
-  import EntrantList from "../judging/entrant-list.svelte";
-  import StageCard from "../judging/stage-card.svelte";
-  import Panel from "../judging/panel.svelte";
-  import { Stage } from "$src/lib/stage.svelte";
-  import { Judgement } from "$src/lib/judging.svelte";
-  import QualifyingHandler from "../judging/qualifying-handler.svelte";
-  import Matches from "../tournaments/matches.svelte";
-  import BattleHandler from "../judging/battle-handler.svelte";
-  import { fade } from "svelte/transition";
-  import { onMount } from "svelte";
+
   import Breadcrumb from "../breadcrumb.svelte";
+  import BattleHandler from "../judging/battle-handler.svelte";
+  import EntrantList from "../judging/entrant-list.svelte";
+  import Panel from "../judging/panel.svelte";
+  import QualifyingHandler from "../judging/qualifying-handler.svelte";
+  import StageCard from "../judging/stage-card.svelte";
+  import Matches from "../tournaments/matches.svelte";
 
   let { params = {} } = $props();
   const tournamentID = $derived(params.id);

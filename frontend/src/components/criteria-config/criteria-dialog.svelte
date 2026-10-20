@@ -1,19 +1,19 @@
 <script lang="ts">
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+
+  import { Button } from "$src/components/ui/button";
+  import * as Collapsible from "$src/components/ui/collapsible";
+  import * as Dialog from "$src/components/ui/dialog";
+  import { Input } from "$src/components/ui/input";
+  import Label from "$src/components/ui/label/label.svelte";
+  import * as Select from "$src/components/ui/select";
   import {
     CreateCriteriaConfig,
     UpdateCriteriaConfig,
   } from "$wails/go/main/App";
   import { repository } from "$wails/go/models";
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 
-  import * as Select from "$src/components/ui/select";
-  import * as Collapsible from "$src/components/ui/collapsible";
-  import ChevronDown from "@lucide/svelte/icons/chevron-down";
-  import * as Dialog from "$src/components/ui/dialog";
-  import { Button } from "$src/components/ui/button";
-  import Label from "$src/components/ui/label/label.svelte";
-  import { Input } from "$src/components/ui/input";
-  import { tick } from "svelte";
   import CategoryHeader from "./category-header.svelte";
 
   type CategoryKey = "common" | "lead" | "chase";

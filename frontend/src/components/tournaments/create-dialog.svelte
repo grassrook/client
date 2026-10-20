@@ -1,19 +1,16 @@
 <script lang="ts">
+  import { type CalendarDate,getLocalTimeZone } from "@internationalized/date";
+  import { Plus } from "@lucide/svelte";
+  import CalendarIcon from "@lucide/svelte/icons/calendar";
+  import Clock2Icon from "@lucide/svelte/icons/clock-2";
   import {
     createMutation,
     createQuery,
     useQueryClient,
   } from "@tanstack/svelte-query";
-  import CalendarIcon from "@lucide/svelte/icons/calendar";
-  import * as Popover from "$src/components/ui/popover";
-  import { Plus } from "@lucide/svelte";
-  import { Button } from "$src/components/ui/button";
-  import Clock2Icon from "@lucide/svelte/icons/clock-2";
-  import { getLocalTimeZone, type CalendarDate } from "@internationalized/date";
-  import * as Field from "$src/components/ui/field";
-  import * as InputGroup from "$src/components/ui/input-group";
-  import { Calendar } from "$src/components/ui/calendar";
 
+  import { Button } from "$src/components/ui/button";
+  import { Calendar } from "$src/components/ui/calendar";
   import {
     Dialog,
     DialogContent,
@@ -23,12 +20,14 @@
     DialogTitle,
     DialogTrigger,
   } from "$src/components/ui/dialog";
+  import * as Field from "$src/components/ui/field";
   import { Input } from "$src/components/ui/input";
+  import * as InputGroup from "$src/components/ui/input-group";
   import { Label } from "$src/components/ui/label";
-  import { Textarea } from "$src/components/ui/textarea";
+  import * as Popover from "$src/components/ui/popover";
   import * as Select from "$src/components/ui/select";
   import Switch from "$src/components/ui/switch/switch.svelte";
-
+  import { Textarea } from "$src/components/ui/textarea";
   import { CreateTournament, GetCriteriaConfigs } from "$wails/go/main/App";
 
   let { open = $bindable(false) } = $props();

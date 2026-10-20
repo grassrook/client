@@ -1,8 +1,5 @@
 <script lang="ts">
-  import { SetChallongeAPIKey, HasChallongeAPIKey } from "$wails/go/main/App";
   import { Button } from "$src/components/ui/button";
-  import { Input } from "$src/components/ui/input";
-  import { Label } from "$src/components/ui/label";
   import {
     Dialog,
     DialogContent,
@@ -10,6 +7,9 @@
     DialogHeader,
     DialogTitle,
   } from "$src/components/ui/dialog";
+  import { Input } from "$src/components/ui/input";
+  import { Label } from "$src/components/ui/label";
+  import { HasChallongeAPIKey,SetChallongeAPIKey } from "$wails/go/main/App";
 
   let { open = $bindable() }: { open: boolean } = $props();
 

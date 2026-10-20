@@ -1,12 +1,12 @@
 <script lang="ts">
   import { createQuery } from "@tanstack/svelte-query";
-
+  import { onMount } from "svelte";
   import { fade } from "svelte/transition";
-  import CreateDialog from "../tournaments/create-dialog.svelte";
-  import Grid from "../tournaments/grid.svelte";
 
   import { GetTournaments } from "$wails/go/main/App";
-  import { onMount } from "svelte";
+
+  import CreateDialog from "../tournaments/create-dialog.svelte";
+  import Grid from "../tournaments/grid.svelte";
   import Separator from "../ui/separator/separator.svelte";
 
   let createTournamentOpen = $state(false);

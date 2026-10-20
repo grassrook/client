@@ -1,15 +1,9 @@
 <script lang="ts">
-  import { AlertCircle, RefreshCw, Trophy, Plus } from "@lucide/svelte";
+  import { AlertCircle, Plus,RefreshCw, Trophy } from "@lucide/svelte";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 
+  import { Badge } from "$src/components/ui/badge";
   import { Button } from "$src/components/ui/button";
-  import {
-    Empty,
-    EmptyDescription,
-    EmptyHeader,
-    EmptyMedia,
-    EmptyTitle,
-  } from "$src/components/ui/empty";
   import {
     Dialog,
     DialogContent,
@@ -18,12 +12,18 @@
     DialogHeader,
     DialogTitle,
   } from "$src/components/ui/dialog";
-  import { Badge } from "$src/components/ui/badge";
-
-  import CardSkel from "./card-skel.svelte";
-  import Card from "./card.svelte";
-  import type { tournament } from "$wails/go/models";
+  import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+  } from "$src/components/ui/empty";
   import { DeleteTournament } from "$wails/go/main/App";
+  import type { tournament } from "$wails/go/models";
+
+  import Card from "./card.svelte";
+  import CardSkel from "./card-skel.svelte";
 
   let {
     tournaments = [],

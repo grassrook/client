@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { mode, toggleMode } from "mode-watcher";
   import Moon from "@lucide/svelte/icons/moon";
   import Sun from "@lucide/svelte/icons/sun";
+  import { mode, toggleMode } from "mode-watcher";
+
   import Button from "$src/components/ui/button/button.svelte";
 
   let current = $derived(mode.current);

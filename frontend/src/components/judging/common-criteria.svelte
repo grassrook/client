@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Criteriacontrol from "./criteria-control.svelte";
   import { Badge } from "$src/components/ui/badge";
   import {
     Card,
@@ -10,6 +9,8 @@
   import { Separator } from "$src/components/ui/separator";
   import type { Judgement } from "$src/lib/judging.svelte";
   import type { repository } from "$wails/go/models";
+
+  import Criteriacontrol from "./criteria-control.svelte";
 
   let {
     category,

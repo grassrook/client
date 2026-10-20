@@ -1,20 +1,19 @@
 <script lang="ts">
+  import House from "@lucide/svelte/icons/house";
+  import MapPinned from "@lucide/svelte/icons/map-pinned";
+  import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
+  import Trophy from "@lucide/svelte/icons/trophy";
+  import UsersRound from "@lucide/svelte/icons/users-round";
   import type { Snippet } from "svelte";
   import { link } from "svelte-spa-router";
   import active from "svelte-spa-router/active";
 
-  import { cn } from "$src/utils";
   import Separator from "$src/components/ui/separator/separator.svelte";
-  import ThemeToggle from "./theme-toggle.svelte";
-
   import * as Sidebar from "$src/components/ui/sidebar";
+  import { cn } from "$src/utils";
 
-  import Trophy from "@lucide/svelte/icons/trophy";
-  import UsersRound from "@lucide/svelte/icons/users-round";
-  import MapPinned from "@lucide/svelte/icons/map-pinned";
-  import House from "@lucide/svelte/icons/house";
-  import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
   import TournamentsMenu from "./sidebar/tournaments-menu.svelte";
+  import ThemeToggle from "./theme-toggle.svelte";
 
   let {
     fixed = false,

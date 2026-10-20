@@ -1,7 +1,9 @@
 <script lang="ts">
-  import Criteriacontrol from "./criteria-control.svelte";
   import { Badge } from "$src/components/ui/badge";
   import { Separator } from "$src/components/ui/separator";
+  import type { repository } from "$wails/go/models";
+
+  import Criteriacontrol from "./criteria-control.svelte";
 
   let {
     tag,
@@ -9,7 +11,7 @@
     onValueChange,
     showSeparator = false,
   }: {
-    tag: Judging.Tag;
+    tag: repository.CriteriaTag;
     value: number | undefined;
     onValueChange: (value: number) => void;
     showSeparator?: boolean;

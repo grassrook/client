@@ -1,14 +1,13 @@
 <script lang="ts">
-  import * as Sidebar from "$src/components/ui/sidebar";
-  import * as Collapsible from "$src/components/ui/collapsible";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import Trophy from "@lucide/svelte/icons/trophy";
+  import { createQuery } from "@tanstack/svelte-query";
   import { link } from "svelte-spa-router";
   import active from "svelte-spa-router/active";
 
-  import { createQuery } from "@tanstack/svelte-query";
+  import * as Collapsible from "$src/components/ui/collapsible";
+  import * as Sidebar from "$src/components/ui/sidebar";
   import { GetTournaments } from "$wails/go/main/App";
-
-  import Trophy from "@lucide/svelte/icons/trophy";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
 
   const tournamentsQuery = createQuery(() => ({
     queryKey: ["tournaments"],

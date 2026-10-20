@@ -1,12 +1,6 @@
 <script lang="ts">
-  import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from "$src/components/ui/select";
   import type { repository } from "$wails/go/models";
+
   import Slider from "../ui/slider/slider.svelte";
   import Switch from "../ui/switch/switch.svelte";
 

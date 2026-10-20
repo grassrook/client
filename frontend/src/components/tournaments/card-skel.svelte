@@ -1,7 +1,7 @@
 <script lang="ts">
+  import Card from "../ui/card/card.svelte";
   import CardContent from "../ui/card/card-content.svelte";
   import CardHeader from "../ui/card/card-header.svelte";
-  import Card from "../ui/card/card.svelte";
   import Skeleton from "../ui/skeleton/skeleton.svelte";
 </script>
 

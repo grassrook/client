@@ -3,13 +3,13 @@
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
   import { ModeWatcher } from "mode-watcher";
   import Router from "svelte-spa-router";
-
   import { wrap } from "svelte-spa-router/wrap";
 
-  import Home from "./components/pages/home.svelte";
-  import ChallongeDialog from "./components/challonge-dialog.svelte";
   import { HasChallongeAPIKey } from "$wails/go/main/App";
+
+  import ChallongeDialog from "./components/challonge-dialog.svelte";
   import Main from "./components/layout/main.svelte";
+  import Home from "./components/pages/home.svelte";
 
   const routes = {
     "/": Home,

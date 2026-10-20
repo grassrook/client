@@ -6,6 +6,8 @@
     CardTitle,
   } from "$src/components/ui/card";
   import type { Judgement } from "$src/lib/judging.svelte";
+  import type { repository } from "$wails/go/models";
+
   import Separator from "../ui/separator/separator.svelte";
   import CriterionRow from "./criterion-row.svelte";
 
@@ -14,7 +16,7 @@
     role,
     judgement,
   }: {
-    category: Judging.CriteriaCategory;
+    category: repository.CriteriaCategory;
     role: "lead" | "chase";
     judgement: Judgement;
   } = $props();

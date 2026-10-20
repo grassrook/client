@@ -1,16 +1,18 @@
 <script lang="ts">
-  import {
-    UpdateMatchSingleParticipant,
-    ChangeLeader,
-  } from "$wails/go/main/App";
+  import { useQueryClient } from "@tanstack/svelte-query";
+
   import type { Judgement } from "$src/lib/judging.svelte";
+  import type { Stage } from "$src/lib/stage.svelte";
+  import {
+    ChangeLeader,
+    UpdateMatchSingleParticipant,
+  } from "$wails/go/main/App";
+
   import Button from "../ui/button/button.svelte";
+  import Card from "../ui/card/card.svelte";
   import CardContent from "../ui/card/card-content.svelte";
   import CardHeader from "../ui/card/card-header.svelte";
   import CardTitle from "../ui/card/card-title.svelte";
-  import Card from "../ui/card/card.svelte";
-  import type { Stage } from "$src/lib/stage.svelte";
-  import { useQueryClient } from "@tanstack/svelte-query";
 
   let {
     tournamentID,

@@ -1,13 +1,15 @@
 <script lang="ts">
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { UpdateTournament, UpdateEntrant } from "$wails/go/main/App";
+
   import type { Judgement } from "$src/lib/judging.svelte";
+  import { UpdateEntrant,UpdateTournament } from "$wails/go/main/App";
+  import type { entrant, tournament } from "$wails/go/models";
+
   import Button from "../ui/button/button.svelte";
+  import Card from "../ui/card/card.svelte";
   import CardContent from "../ui/card/card-content.svelte";
   import CardHeader from "../ui/card/card-header.svelte";
   import CardTitle from "../ui/card/card-title.svelte";
-  import Card from "../ui/card/card.svelte";
-  import type { entrant, tournament } from "$wails/go/models";
 
   let {
     tournament = $bindable(),

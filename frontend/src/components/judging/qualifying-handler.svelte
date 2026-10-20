@@ -68,9 +68,27 @@
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
       });
-      await queryClient.invalidateQueries({
+
+      const result = await queryClient.query({
         queryKey: ["scores", tournament.id],
+        queryFn: () => GetAllQualifyingScores(tournament.id),
       });
+
+      const nextFront = tournament.qualifying_order
+        .split(",")
+        .map((id) => id.trim())[0];
+
+      const nextScores =
+        result.find((data) => data.participantId === nextFront)?.scores ?? [];
+
+      const nextRound = Array.from(
+        { length: tournament.qualifyingRounds },
+        (_, i) => i + 1,
+      ).find((round) => nextScores[round - 1]?.status !== "scored");
+
+      if (nextRound !== undefined) {
+        qualifyingRound = String(nextRound) as QualifyingRound;
+      }
     },
   }));
 
@@ -108,7 +126,6 @@
 
   async function handleQualifying(score: number) {
     const front = orderedEntrants[0];
-
     const order = tournament.qualifying_order.split(",").map((id) => id.trim());
     const first = order.shift();
     if (first) {
@@ -167,20 +184,20 @@
           {#each Array.from({ length: tournament.qualifyingRounds }, (_, i) => i + 1) as round (round)}
             {@const isScored = frontScores[round - 1]?.status === "scored"}
 
-            <button
+            <Button
               type="button"
+              variant={isScored
+                ? "ghost"
+                : qualifyingRound === String(round)
+                  ? "default"
+                  : "outline"}
               disabled={isScored}
               onclick={() =>
                 (qualifyingRound = String(round) as QualifyingRound)}
               aria-pressed={qualifyingRound === String(round)}
-              class={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
-                qualifyingRound === String(round)
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
-              } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               Round {round}
-            </button>
+            </Button>
           {/each}
         </div>
       </div>

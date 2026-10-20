@@ -107,6 +107,10 @@
         queryKey: ["tournament", tournament.id],
       });
 
+      await queryClient.invalidateQueries({
+        queryKey: ["tournaments"],
+      });
+
       concludeDialogOpen = false;
     },
     onError: (error) => {

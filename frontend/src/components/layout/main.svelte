@@ -12,7 +12,9 @@
   import Trophy from "@lucide/svelte/icons/trophy";
   import UsersRound from "@lucide/svelte/icons/users-round";
   import MapPinned from "@lucide/svelte/icons/map-pinned";
+  import House from "@lucide/svelte/icons/house";
   import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
+  import TournamentsMenu from "./sidebar/tournaments-menu.svelte";
 
   let {
     fixed = false,
@@ -67,15 +69,16 @@
                         className:
                           "bg-sidebar-accent text-sidebar-accent-foreground",
                         inactiveClassName:
-                          "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                          "hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
                       }}
                     >
-                      <Trophy aria-hidden="true" />
-                      <span>Tournaments</span>
+                      <House aria-hidden="true" />
+                      <span>Home</span>
                     </a>
                   {/snippet}
                 </Sidebar.MenuButton>
               </Sidebar.MenuItem>
+              <TournamentsMenu />
 
               <Sidebar.MenuItem>
                 <Sidebar.MenuButton class="cursor-not-allowed opacity-45">
@@ -109,10 +112,9 @@
                       use:link
                       use:active={{
                         path: "/criteria-configs",
-                        className:
-                          "bg-sidebar-accent text-sidebar-accent-foreground",
+                        className: "bg-sidebar-accent",
                         inactiveClassName:
-                          "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                          "hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
                       }}
                     >
                       <SlidersHorizontal aria-hidden="true" />

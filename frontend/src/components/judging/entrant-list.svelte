@@ -165,7 +165,8 @@
 
     let qualifyingOrder = tournament.qualifying_order
       .split(",")
-      .map((id) => id.trim());
+      .map((id) => id.trim())
+      .filter(Boolean);
 
     // only do this if this participant id was previously not qualified
     if (!qualifyingOrder.includes(participantID)) {

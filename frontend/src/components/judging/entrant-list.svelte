@@ -129,11 +129,23 @@
   async function handleNotQualified(participantID: string) {
     const qualifyingRounds = tournament.qualifyingRounds;
 
+    const qualifyingOrder = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim());
+
+    const filteredQualifyingOrder = qualifyingOrder.filter(
+      (id) => id !== participantID,
+    );
+
     await Promise.all(
       Array.from({ length: qualifyingRounds }, (_, i) =>
         UpdateQualifyingScore(tournament.id, participantID, i + 1, 0, "scored"),
       ),
     );
+
+    updateTournamentMutation.mutate({
+      qualifyingOrder: filteredQualifyingOrder,
+    });
   }
 
   async function handlePending(participantID: string) {
@@ -150,6 +162,18 @@
         ),
       ),
     );
+
+    let qualifyingOrder = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim());
+
+    // only do this if this participant id was previously not qualified
+    if (!qualifyingOrder.includes(participantID)) {
+      qualifyingOrder.push(participantID);
+      updateTournamentMutation.mutate({
+        qualifyingOrder,
+      });
+    }
   }
 
   let concludeDialogOpen = $state(false);
@@ -192,7 +216,7 @@
       (scores.data ?? []).map((data) => [data.participantId, data.scores]),
     );
 
-    const ordered = order
+    let ordered = order
       .map((id) => {
         const entrant = byParticipantId.get(id);
 
@@ -204,6 +228,24 @@
         };
       })
       .filter((entrant) => entrant !== undefined);
+
+    const notQualifiedEntrants = entrants
+      .filter((entrant) => entrant.status === "not_qualified")
+      .map((entrant) => ({
+        ...entrant,
+        scores: scoresByParticipantId.get(entrant.participantId) ?? [],
+      }));
+
+    const uniqueOrdered = [
+      ...new Map(
+        ordered.map((entrant) => [entrant.participantId, entrant]),
+      ).values(),
+    ];
+
+    ordered = [
+      ...uniqueOrdered.filter((entrant) => entrant.status !== "not_qualified"),
+      ...notQualifiedEntrants,
+    ];
 
     const hasPendingScores = ordered
       .flatMap((entrant) => entrant.scores)
@@ -247,7 +289,7 @@
     </Empty>
   {:else}
     <div class="divide-y overflow-hidden rounded-lg border bg-card">
-      {#each orderedEntrants.entrants as entrant, idx (entrant.id)}
+      {#each orderedEntrants.entrants as entrant, idx (entrant.participantId)}
         <button
           type="button"
           class={[

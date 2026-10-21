@@ -326,11 +326,11 @@
               </div>
               {#if tournament.qualifyingRounds > 1}
                 <small class="flex gap-1 items-center text-muted-foreground">
-                  {#each entrant.scores as score, idx (idx)}
+                  {#each entrant.scores as data, idx (idx)}
                     <span
-                      >Round {idx + 1}: {score.status === "pending"
+                      >Round {idx + 1}: {data.status === "pending"
                         ? "—"
-                        : score.score}</span
+                        : data.score}</span
                     >
                     {#if idx + 1 != entrant.scores.length}
                       <Separator orientation="vertical" />

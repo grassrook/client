@@ -88,7 +88,7 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 				)
 			}
 
-			data.Scores[index].Score = int(score.Float64)
+			data.Scores[index].Score = score.Float64
 			data.Scores[index].Status = status
 		}
 	}

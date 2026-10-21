@@ -12,8 +12,8 @@ type QualifyingScore struct {
 }
 
 type ScoreData struct {
-	Score  int    `json:"score"`
-	Status string `json:"status"`
+	Score  float64 `json:"score"`
+	Status string  `json:"status"`
 }
 
 type Data struct {

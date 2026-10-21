@@ -129,11 +129,23 @@
   async function handleNotQualified(participantID: string) {
     const qualifyingRounds = tournament.qualifyingRounds;
 
+    const qualifyingOrder = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim());
+
+    const filteredQualifyingOrder = qualifyingOrder.filter(
+      (id) => id !== participantID,
+    );
+
     await Promise.all(
       Array.from({ length: qualifyingRounds }, (_, i) =>
         UpdateQualifyingScore(tournament.id, participantID, i + 1, 0, "scored"),
       ),
     );
+
+    updateTournamentMutation.mutate({
+      qualifyingOrder: filteredQualifyingOrder,
+    });
   }
 
   async function handlePending(participantID: string) {
@@ -150,6 +162,19 @@
         ),
       ),
     );
+
+    let qualifyingOrder = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    // only do this if this participant id was previously not qualified
+    if (!qualifyingOrder.includes(participantID)) {
+      qualifyingOrder.push(participantID);
+      updateTournamentMutation.mutate({
+        qualifyingOrder,
+      });
+    }
   }
 
   let concludeDialogOpen = $state(false);
@@ -182,7 +207,12 @@
   }));
 
   const orderedEntrants = $derived.by(() => {
-    const order = tournament.qualifying_order.split(",").map((id) => id.trim());
+    const order = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    const orderedIds = new Set(order);
 
     const byParticipantId = new Map(
       entrants.map((entrant) => [entrant.participantId, entrant]),
@@ -205,12 +235,27 @@
       })
       .filter((entrant) => entrant !== undefined);
 
-    const hasPendingScores = ordered
+    const uniqueOrdered = [
+      ...new Map(
+        ordered.map((entrant) => [entrant.participantId, entrant]),
+      ).values(),
+    ];
+
+    const unlistedEntrants = entrants
+      .filter((entrant) => !orderedIds.has(entrant.participantId))
+      .map((entrant) => ({
+        ...entrant,
+        scores: scoresByParticipantId.get(entrant.participantId) ?? [],
+      }));
+
+    const finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
+
+    const hasPendingScores = finalOrdered
       .flatMap((entrant) => entrant.scores)
       .some((score) => score.status === "pending");
 
     return {
-      entrants: ordered,
+      entrants: finalOrdered,
       hasPendingScores,
     };
   });
@@ -247,7 +292,7 @@
     </Empty>
   {:else}
     <div class="divide-y overflow-hidden rounded-lg border bg-card">
-      {#each orderedEntrants.entrants as entrant, idx (entrant.id)}
+      {#each orderedEntrants.entrants as entrant, idx (entrant.participantId)}
         <button
           type="button"
           class={[
@@ -284,11 +329,11 @@
               </div>
               {#if tournament.qualifyingRounds > 1}
                 <small class="flex gap-1 items-center text-muted-foreground">
-                  {#each entrant.scores as score, idx (idx)}
+                  {#each entrant.scores as data, idx (idx)}
                     <span
-                      >Round {idx + 1}: {score.status === "pending"
+                      >Round {idx + 1}: {data.status === "pending"
                         ? "—"
-                        : score.score}</span
+                        : data.score}</span
                     >
                     {#if idx + 1 != entrant.scores.length}
                       <Separator orientation="vertical" />
@@ -325,7 +370,10 @@
                     onclick={() => moveToFirst(idx)}
                     disabled={entrant.status === "not_qualified" ||
                       updateTournamentMutation.isPending ||
-                      idx === 0}
+                      idx === 0 ||
+                      !tournament.qualifying_order.includes(
+                        entrant.participantId,
+                      )}
                   >
                     Move to front
                   </DropdownMenuItem>

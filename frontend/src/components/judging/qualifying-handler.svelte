@@ -126,11 +126,19 @@
 
   async function handleQualifying(score: number) {
     const front = orderedEntrants[0];
-    const order = tournament.qualifying_order.split(",").map((id) => id.trim());
+    let order = tournament.qualifying_order.split(",").map((id) => id.trim());
+
     const first = order.shift();
     if (first) {
       order.push(first);
     }
+
+    const onLastRound = Number(qualifyingRound) == tournament.qualifyingRounds;
+    // remove participant from qualifying order if already scored all rounds
+    if (onLastRound) {
+      order.pop();
+    }
+
     await updateTournamentMutation.mutateAsync({
       qualifyingOrder: order,
     });

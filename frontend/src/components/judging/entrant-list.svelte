@@ -206,7 +206,12 @@
   }));
 
   const orderedEntrants = $derived.by(() => {
-    const order = tournament.qualifying_order.split(",").map((id) => id.trim());
+    const order = tournament.qualifying_order
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    const orderedIds = new Set(order);
 
     const byParticipantId = new Map(
       entrants.map((entrant) => [entrant.participantId, entrant]),
@@ -216,7 +221,7 @@
       (scores.data ?? []).map((data) => [data.participantId, data.scores]),
     );
 
-    let ordered = order
+    const ordered = order
       .map((id) => {
         const entrant = byParticipantId.get(id);
 
@@ -229,30 +234,27 @@
       })
       .filter((entrant) => entrant !== undefined);
 
-    const notQualifiedEntrants = entrants
-      .filter((entrant) => entrant.status === "not_qualified")
-      .map((entrant) => ({
-        ...entrant,
-        scores: scoresByParticipantId.get(entrant.participantId) ?? [],
-      }));
-
     const uniqueOrdered = [
       ...new Map(
         ordered.map((entrant) => [entrant.participantId, entrant]),
       ).values(),
     ];
 
-    ordered = [
-      ...uniqueOrdered.filter((entrant) => entrant.status !== "not_qualified"),
-      ...notQualifiedEntrants,
-    ];
+    const unlistedEntrants = entrants
+      .filter((entrant) => !orderedIds.has(entrant.participantId))
+      .map((entrant) => ({
+        ...entrant,
+        scores: scoresByParticipantId.get(entrant.participantId) ?? [],
+      }));
 
-    const hasPendingScores = ordered
+    const finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
+
+    const hasPendingScores = finalOrdered
       .flatMap((entrant) => entrant.scores)
       .some((score) => score.status === "pending");
 
     return {
-      entrants: ordered,
+      entrants: finalOrdered,
       hasPendingScores,
     };
   });
@@ -367,7 +369,10 @@
                     onclick={() => moveToFirst(idx)}
                     disabled={entrant.status === "not_qualified" ||
                       updateTournamentMutation.isPending ||
-                      idx === 0}
+                      idx === 0 ||
+                      !tournament.qualifying_order.includes(
+                        entrant.participantId,
+                      )}
                   >
                     Move to front
                   </DropdownMenuItem>

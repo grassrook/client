@@ -151,6 +151,7 @@
         </div>
         <Button
           onclick={() => {
+            dialogMode = "create";
             configDialogOpen = true;
             selectedConfig = undefined;
           }}>+ New Config</Button

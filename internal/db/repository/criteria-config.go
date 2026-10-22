@@ -11,6 +11,7 @@ type CriteriaConfig struct {
 	ID         int                `json:"id"`
 	Name       string             `json:"name"`
 	Categories CriteriaCategories `json:"categories"`
+	Raw        string             `json:"raw"`
 }
 
 type CriteriaCategories struct {
@@ -71,7 +72,7 @@ func (r *SQLiteCriteriaConfigRepository) Get() ([]CriteriaConfig, error) {
 		if err := json.Unmarshal([]byte(raw), &config.Categories); err != nil {
 			return nil, fmt.Errorf("decode criteria config %d: %w", config.ID, err)
 		}
-
+		config.Raw = raw
 		configs = append(configs, config)
 	}
 

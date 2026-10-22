@@ -1,5 +1,5 @@
 <script lang="ts">
-  import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
+  import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import {
     createMutation,
     createQuery,
@@ -82,6 +82,19 @@
   onMount(() => {
     mounted = true;
   });
+
+  function exportConfig(config: repository.CriteriaConfig) {
+    const json = JSON.stringify(JSON.parse(config.raw), null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${config.name}.json`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <AlertDialog.Root bind:open={deleteDialogOpen}>
@@ -214,12 +227,17 @@
                                 size="icon"
                                 aria-label="Open actions menu"
                               >
-                                <EllipsisVertical class="size-4" />
+                                <Ellipsis class="size-4" />
                               </Button>
                             {/snippet}
                           </DropdownMenu.Trigger>
 
                           <DropdownMenu.Content align="end">
+                            <DropdownMenu.Item
+                              onclick={() => exportConfig(config)}
+                            >
+                              Export to JSON
+                            </DropdownMenu.Item>
                             <DropdownMenu.Item
                               onclick={() => openUpdateDialog(config)}
                             >

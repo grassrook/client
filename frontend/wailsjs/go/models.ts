@@ -221,6 +221,7 @@ export namespace repository {
 	    id: number;
 	    name: string;
 	    categories: CriteriaCategories;
+	    raw: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CriteriaConfig(source);
@@ -231,6 +232,7 @@ export namespace repository {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.categories = this.convertValues(source["categories"], CriteriaCategories);
+	        this.raw = source["raw"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

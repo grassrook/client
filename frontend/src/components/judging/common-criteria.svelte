@@ -6,10 +6,10 @@
     CardHeader,
     CardTitle,
   } from "$src/components/ui/card";
-  import { Separator } from "$src/components/ui/separator";
   import type { Judgement } from "$src/lib/judging.svelte";
   import type { repository } from "$wails/go/models";
 
+  import Separator from "../ui/separator/separator.svelte";
   import Criteriacontrol from "./criteria-control.svelte";
 
   let {
@@ -39,7 +39,7 @@
 
     {#if !isQualifying}
       <div
-        class="hidden grid-cols-[minmax(0,1fr)_10rem_10rem] items-center gap-4 px-1 pb-1 md:grid"
+        class="hidden grid-cols-[minmax(0,1fr)_10rem_10rem] items-center gap-4 px-1 pt-2 pb-1 md:grid"
       >
         <div></div>
         <div
@@ -55,11 +55,7 @@
       </div>
     {/if}
 
-    {#each category.tags as tag, index (tag.id)}
-      {#if index > 0}
-        <Separator />
-      {/if}
-
+    {#each category.tags as tag, index (index)}
       <div
         class={`grid gap-3 py-3 md:items-center md:gap-4 md:py-2 ${
           isQualifying
@@ -105,7 +101,7 @@
         </div>
 
         <!-- Lead -->
-        <div class="flex items-center justify-between gap-3 md:flex-row">
+        <div class="flex flex-col gap-2">
           <span
             class="text-xs font-medium tracking-wide text-muted-foreground uppercase md:hidden"
             >Lead</span
@@ -120,7 +116,7 @@
 
         {#if !isQualifying}
           <!-- Chase -->
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex flex-col gap-2 mt-2">
             <span
               class="text-xs font-medium tracking-wide text-muted-foreground uppercase md:hidden"
               >Chase</span

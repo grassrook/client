@@ -33,27 +33,25 @@
     </SelectContent>
   </Select> -->
 {:else if tag.valueType === "dynamic"}
-  <div class="flex items-center justify-end gap-3 sm:justify-center">
-    <Slider
-      type="single"
-      value={Math.abs(Number(value ?? 0)) / (tag.multiplier ?? 1)}
-      min={0}
-      max={tag.max !== undefined ? tag.max / (tag.multiplier ?? 1) : 100}
-      step={1}
-      aria-label={tag.label}
-      onValueChange={(value) => {
-        const multiplier = tag.multiplier ?? 1;
-        const amount = value * multiplier;
+  <Slider
+    class=" [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-thumb]]:size-5"
+    type="single"
+    value={Math.abs(Number(value ?? 0)) / (tag.multiplier ?? 1)}
+    min={0}
+    max={tag.max !== undefined ? tag.max / (tag.multiplier ?? 1) : 100}
+    step={1}
+    aria-label={tag.label}
+    onValueChange={(value) => {
+      const multiplier = tag.multiplier ?? 1;
+      const amount = value * multiplier;
 
-        onValueChange(tag.type === "deduction" ? -amount : amount);
-      }}
-      class="w-full sm:w-36"
-    />
+      onValueChange(tag.type === "deduction" ? -amount : amount);
+    }}
+  />
 
-    <!-- <span class="w-8 shrink-0 text-right text-sm tabular-nums">
+  <!-- <span class="w-8 shrink-0 text-right text-sm tabular-nums">
 			{Math.abs(Number(value ?? 0)) / (tag.multiplier ?? 1)}
 		</span> -->
-  </div>
 {:else if tag.valueType === "switch"}
   <Switch
     aria-label={tag.label}

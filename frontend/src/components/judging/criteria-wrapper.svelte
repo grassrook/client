@@ -22,12 +22,12 @@
   } = $props();
 </script>
 
-<Card class="gap-0 border-border/70 shadow-none">
+<Card class="gap-0">
   <CardHeader class="flex-row items-baseline justify-between gap-3 pb-4">
     <CardTitle class="min-w-0 truncate">{category.label}</CardTitle>
-    <span class="shrink-0 text-xs font-medium text-muted-foreground capitalize"
+    <!-- <span class="shrink-0 text-xs font-medium text-muted-foreground capitalize"
       >{role}</span
-    >
+    > -->
   </CardHeader>
   <Separator />
   <CardContent class="space-y-1 pt-2">

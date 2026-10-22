@@ -1,6 +1,5 @@
 <script lang="ts">
   import { Badge } from "$src/components/ui/badge";
-  import { Separator } from "$src/components/ui/separator";
   import type { repository } from "$wails/go/models";
 
   import Criteriacontrol from "./criteria-control.svelte";
@@ -9,7 +8,6 @@
     tag,
     value,
     onValueChange,
-    showSeparator = false,
   }: {
     tag: repository.CriteriaTag;
     value: number | undefined;
@@ -24,12 +22,11 @@
   }
 </script>
 
-{#if showSeparator}
-  <Separator />
-{/if}
-
 <div
-  class="flex flex-col items-stretch gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+  class="flex gap-3 py-3"
+  class:flex-col={tag.valueType !== "switch"}
+  class:justify-between={tag.valueType === "switch"}
+  class:items-center={tag.valueType === "switch"}
 >
   <div class="min-w-0">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -55,11 +52,9 @@
     </div>
   </div>
 
-  <div class="shrink-0 self-end sm:self-center">
-    <Criteriacontrol
-      {tag}
-      {value}
-      onValueChange={(value) => onValueChange(Number(value))}
-    />
-  </div>
+  <Criteriacontrol
+    {tag}
+    {value}
+    onValueChange={(value) => onValueChange(Number(value))}
+  />
 </div>

@@ -5,6 +5,7 @@
   import { Button } from "$src/components/ui/button";
   import * as Collapsible from "$src/components/ui/collapsible";
   import * as Dialog from "$src/components/ui/dialog";
+  import { Dropzone } from "$src/components/ui/dropzone";
   import { Input } from "$src/components/ui/input";
   import Label from "$src/components/ui/label/label.svelte";
   import * as Select from "$src/components/ui/select";
@@ -14,6 +15,7 @@
   } from "$wails/go/main/App";
   import { repository } from "$wails/go/models";
 
+  import Separator from "../ui/separator/separator.svelte";
   import CategoryHeader from "./category-header.svelte";
 
   type CategoryKey = "common" | "lead" | "chase";
@@ -64,12 +66,21 @@
     formError = "";
   }
 
-  function loadConfig(value: repository.CriteriaConfig) {
-    newConfigName = value.name;
+  type CategoryInput = {
+    label: string;
+    tags: {
+      id?: string;
+      label: string;
+      type: string;
+      valueType: string;
+      max?: number | null;
+      multiplier?: number | null;
+      defaultValue?: number | null;
+    }[];
+  };
 
-    const toFormCategory = (
-      category: repository.CriteriaCategory,
-    ): CategoryForm => ({
+  function toFormCategory(category: CategoryInput): CategoryForm {
+    return {
       label: category.label,
       tags: category.tags.map((tag) => ({
         id: tag.id,
@@ -80,8 +91,11 @@
         multiplier: Number(tag.multiplier ?? 1),
         defaultValue: Number(tag.defaultValue ?? 0),
       })),
-    });
+    };
+  }
 
+  function loadConfig(value: repository.CriteriaConfig) {
+    newConfigName = value.name;
     categories = {
       common: toFormCategory(value.categories.common),
       lead: toFormCategory(value.categories.lead),
@@ -208,6 +222,55 @@
       tags: sourceCategory.tags.map((tag) => ({ ...tag })),
     };
   }
+
+  function isValidConfig(
+    value: unknown,
+  ): value is Record<CategoryKey, CategoryForm> {
+    if (typeof value !== "object" || value === null) return false;
+
+    const categories = value as Record<string, unknown>;
+    const requiredKeys: CategoryKey[] = ["common", "lead", "chase"];
+
+    return requiredKeys.every((key) => {
+      const category = categories[key];
+
+      if (typeof category !== "object" || category === null) return false;
+
+      const { label, tags } = category as Record<string, unknown>;
+
+      return typeof label === "string" && Array.isArray(tags);
+    });
+  }
+
+  function handleFilesChange(files: File[]) {
+    formError = "";
+
+    const current = files[0];
+    if (!current) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsed: unknown = JSON.parse(reader.result as string);
+
+        if (!isValidConfig(parsed)) {
+          formError = "Invalid JSON config format";
+          return;
+        }
+
+        categories = {
+          common: toFormCategory(parsed.common),
+          lead: toFormCategory(parsed.lead),
+          chase: toFormCategory(parsed.chase),
+        };
+      } catch {
+        formError = "Invalid JSON syntax";
+      }
+    };
+
+    reader.readAsText(current);
+  }
 </script>
 
 <Dialog.Root bind:open>
@@ -238,6 +301,23 @@
           placeholder="e.g. Default Criteria"
           required
         />
+      </div>
+
+      <Dropzone
+        accept=".json"
+        showFileList={false}
+        maxSizeMB={1}
+        multiple={false}
+        autoUpload={true}
+        onfileschange={handleFilesChange}
+      />
+
+      <div class="flex items-center my-4 w-full">
+        <Separator class="flex-1" />
+        <span class="mx-4 shrink-0 text-xs uppercase text-muted-foreground"
+          >Or create manually</span
+        >
+        <Separator class="flex-1" />
       </div>
 
       {#each [{ key: "common", title: "Common", category: categories.common }, { key: "lead", title: "Lead", category: categories.lead }, { key: "chase", title: "Chase", category: categories.chase }] as section (section.key)}

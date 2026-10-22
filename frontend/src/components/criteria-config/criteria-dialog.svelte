@@ -303,22 +303,24 @@
         />
       </div>
 
-      <Dropzone
-        accept=".json"
-        showFileList={false}
-        maxSizeMB={1}
-        multiple={false}
-        autoUpload={true}
-        onfileschange={handleFilesChange}
-      />
+      {#if mode === "create"}
+        <Dropzone
+          accept=".json"
+          showFileList={false}
+          maxSizeMB={1}
+          multiple={false}
+          autoUpload={true}
+          onfileschange={handleFilesChange}
+        />
 
-      <div class="flex items-center my-4 w-full">
-        <Separator class="flex-1" />
-        <span class="mx-4 shrink-0 text-xs uppercase text-muted-foreground"
-          >Or create manually</span
-        >
-        <Separator class="flex-1" />
-      </div>
+        <div class="flex items-center my-4 w-full">
+          <Separator class="flex-1" />
+          <span class="mx-4 shrink-0 text-xs uppercase text-muted-foreground"
+            >Or create manually</span
+          >
+          <Separator class="flex-1" />
+        </div>
+      {/if}
 
       {#each [{ key: "common", title: "Common", category: categories.common }, { key: "lead", title: "Lead", category: categories.lead }, { key: "chase", title: "Chase", category: categories.chase }] as section (section.key)}
         <section class="space-y-4 rounded-lg border p-4">

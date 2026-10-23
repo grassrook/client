@@ -264,6 +264,7 @@ export namespace repository {
 	    participantId?: string;
 	    score?: number;
 	    bothRunFinished: boolean;
+	    note: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Match(source);
@@ -280,6 +281,7 @@ export namespace repository {
 	        this.participantId = source["participantId"];
 	        this.score = source["score"];
 	        this.bothRunFinished = source["bothRunFinished"];
+	        this.note = source["note"];
 	    }
 	}
 	export class UpdateEntrantParams {

@@ -238,6 +238,18 @@ func (a *App) ConcludeBattle(tournamentID, matchID string) error {
 	return nil
 }
 
+func (a *App) GetNote(matchID string) (string, error) {
+	note, err := a.matchesRepo.GetNote(a.ctx, matchID)
+	if err != nil {
+		return "", err
+	}
+	return note, nil
+}
+
+func (a *App) UpdateNote(matchID, text string) error {
+	return a.matchesRepo.UpdateNote(a.ctx, matchID, text)
+}
+
 func (a *App) ResetBattle(tournamentID, matchID string) error {
 	if err := a.matchesRepo.ResetBattle(a.ctx, tournamentID, matchID); err != nil {
 		runtime.LogErrorf(a.ctx, "Failed to reset battle: %v", err)

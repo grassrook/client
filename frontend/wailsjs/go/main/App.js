@@ -62,6 +62,10 @@ export function GetMatches(arg1) {
   return window['go']['main']['App']['GetMatches'](arg1);
 }
 
+export function GetNote(arg1) {
+  return window['go']['main']['App']['GetNote'](arg1);
+}
+
 export function GetTournament(arg1) {
   return window['go']['main']['App']['GetTournament'](arg1);
 }
@@ -100,6 +104,10 @@ export function UpdateEntrant(arg1) {
 
 export function UpdateMatchSingleParticipant(arg1) {
   return window['go']['main']['App']['UpdateMatchSingleParticipant'](arg1);
+}
+
+export function UpdateNote(arg1, arg2) {
+  return window['go']['main']['App']['UpdateNote'](arg1, arg2);
 }
 
 export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {

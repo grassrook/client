@@ -1,6 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
-  import { useQueryClient } from "@tanstack/svelte-query";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
 
   import {
@@ -33,6 +33,7 @@
     ConcludeBattle,
     ResetBattle,
     SyncTournament,
+    UpdateNote,
     UpdateTournamentState,
   } from "$wails/go/main/App";
   import { type repository } from "$wails/go/models";
@@ -149,8 +150,20 @@
       ),
   );
 
+  const updateNoteMutation = createMutation(() => ({
+    mutationFn: (text: string) => UpdateNote(stage.matchId!, text),
+    onError: (error) => {
+      console.error("Failed to update note:", error);
+    },
+  }));
+
   async function onHandleOMT(match: repository.Match[]) {
+    await updateNoteMutation.mutateAsync("");
     await ResetBattle(tournamentID, selectedMatchId!);
+
+    await queryClient.invalidateQueries({
+      queryKey: ["note", tournamentID, stage.matchId],
+    });
 
     await queryClient.invalidateQueries({
       queryKey: ["activeBattles", tournamentID],

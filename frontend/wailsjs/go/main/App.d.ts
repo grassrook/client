@@ -35,6 +35,8 @@ export function GetMatch(arg1:string):Promise<repository.Match>;
 
 export function GetMatches(arg1:string):Promise<Array<any>>;
 
+export function GetNote(arg1:string):Promise<string>;
+
 export function GetTournament(arg1:string):Promise<tournament.Tournament>;
 
 export function GetTournaments():Promise<Array<tournament.Tournament>>;
@@ -54,6 +56,8 @@ export function UpdateCriteriaConfig(arg1:number,arg2:repository.CriteriaConfig)
 export function UpdateEntrant(arg1:repository.UpdateEntrantParams):Promise<void>;
 
 export function UpdateMatchSingleParticipant(arg1:repository.UpdateMatchSingleParticipantParams):Promise<void>;
+
+export function UpdateNote(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateQualifyingScore(arg1:string,arg2:string,arg3:number,arg4:number,arg5:string):Promise<void>;
 

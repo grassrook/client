@@ -38,6 +38,7 @@ type Match struct {
 	ParticipantID          *string  `json:"participantId"`
 	Score                  *float64 `json:"score"`
 	BothRunFinished        bool     `json:"bothRunFinished"`
+	Note                   string   `json:"note"`
 }
 
 type RoundGroup struct {
@@ -65,6 +66,8 @@ type MatchesRepository interface {
 	ChangeLeader(ctx context.Context, tournamentID, matchID string) error
 	ConcludeBattle(ctx context.Context, tournamentID string, matchID string) error
 	ResetBattle(ctx context.Context, tournamentID string, matchID string) error
+	GetNote(ctx context.Context, matchID string) (string, error)
+	UpdateNote(ctx context.Context, matchID, text string) error
 }
 
 type SQLiteMatchesRepository struct {
@@ -101,7 +104,8 @@ func (r *SQLiteMatchesRepository) GetMatch(
 					GROUP BY ab.match_id
 				),
 				1
-			) AS both_run_finished
+			) AS both_run_finished,
+			n.note
 		FROM nodes n
 		LEFT JOIN participants p ON p.id = n.participant_id
 		WHERE n.match_id = ?
@@ -116,6 +120,7 @@ func (r *SQLiteMatchesRepository) GetMatch(
 		participantID   sql.NullString
 		score           sql.NullFloat64
 		bothRunFinished int
+		note            string
 	)
 
 	err := r.DB.QueryRowContext(ctx, query, matchID).Scan(
@@ -128,6 +133,7 @@ func (r *SQLiteMatchesRepository) GetMatch(
 		&participantID,
 		&score,
 		&bothRunFinished,
+		&note,
 	)
 	if err != nil {
 		return Match{}, fmt.Errorf("get match: %w", err)
@@ -183,7 +189,8 @@ func (r *SQLiteMatchesRepository) GetMatches(
 					GROUP BY ab.match_id
 				),
 				1
-			) AS both_run_finished
+			) AS both_run_finished,
+			 n.note
 		FROM nodes n
 		INNER JOIN brackets b ON n.bracket_id = b.id
 		LEFT JOIN participants p ON p.id = n.participant_id
@@ -208,6 +215,7 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			participantID   sql.NullString
 			score           sql.NullFloat64
 			bothRunFinished int
+			note            string
 		)
 
 		err := rows.Scan(
@@ -220,6 +228,7 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			&participantID,
 			&score,
 			&bothRunFinished,
+			&note,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan bracket match: %w", err)
@@ -990,4 +999,36 @@ func (r *SQLiteMatchesRepository) ResetBattle(
 	}
 
 	return nil
+}
+
+func (r *SQLiteMatchesRepository) GetNote(
+	ctx context.Context,
+	matchID string,
+) (string, error) {
+	var note string
+
+	err := r.DB.QueryRowContext(ctx, `
+        SELECT note
+        FROM nodes
+        WHERE match_id = ?
+    `, matchID).Scan(&note)
+
+	if err != nil {
+		return "", err
+	}
+
+	return note, nil
+}
+
+func (r *SQLiteMatchesRepository) UpdateNote(
+	ctx context.Context,
+	matchID, text string,
+) error {
+	_, err := r.DB.ExecContext(ctx, `
+        UPDATE nodes
+        SET note = ?
+        WHERE match_id = ?
+    `, text, matchID)
+
+	return err
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
-  import { useQueryClient } from "@tanstack/svelte-query";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
 
   import {
@@ -33,15 +33,18 @@
     ConcludeBattle,
     ResetBattle,
     SyncTournament,
+    UpdateNote,
     UpdateTournamentState,
   } from "$wails/go/main/App";
   import { type repository } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
+  import * as ButtonGroup from "../ui/button-group";
   import Empty from "../ui/empty/empty.svelte";
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
+  import Separator from "../ui/separator/separator.svelte";
 
   type Battles = repository.ActiveBattle[];
 
@@ -149,8 +152,20 @@
       ),
   );
 
+  const updateNoteMutation = createMutation(() => ({
+    mutationFn: (text: string) => UpdateNote(stage.matchId!, text),
+    onError: (error) => {
+      console.error("Failed to update note:", error);
+    },
+  }));
+
   async function onHandleOMT(match: repository.Match[]) {
+    await updateNoteMutation.mutateAsync("");
     await ResetBattle(tournamentID, selectedMatchId!);
+
+    await queryClient.invalidateQueries({
+      queryKey: ["note", tournamentID, stage.matchId],
+    });
 
     await queryClient.invalidateQueries({
       queryKey: ["activeBattles", tournamentID],
@@ -311,8 +326,23 @@
             {@const hasBothParticipants =
               match[0].participantId && match[1].participantId}
 
-            <Card class="border-border/80">
-              <CardHeader class="border-b pb-3">
+            <Card
+              class={`border-border/80 cursor-pointer transition-colors hover:border-primary/60 hover:bg-muted/50 gap-1 ${
+                selectedMatchId === currentMatch.matchId
+                  ? "border-primary/60 bg-muted/50"
+                  : ""
+              }`}
+              onclick={() => {
+                if (
+                  currentMatch.status === "open" &&
+                  hasBothParticipants &&
+                  selectedMatchId !== currentMatch.matchId
+                ) {
+                  onStartMatch(match);
+                }
+              }}
+            >
+              <CardHeader class="border-b">
                 <div class="flex items-center justify-between">
                   <CardTitle class="text-sm"
                     >Match {round.indexOf(matchData) + 1}</CardTitle
@@ -328,116 +358,130 @@
                 </div>
               </CardHeader>
 
-              <CardContent class="space-y-3 pt-4">
-                {#each match as entrant}
-                  <div
-                    class={[
-                      "flex items-center justify-between gap-3 rounded-md border px-3 py-3 sm:px-4",
-                      entrant.winnerId &&
-                      entrant.winnerId === entrant.challongeParticipantId
-                        ? "border-green-500/30 bg-green-500/10"
-                        : "",
-                    ]}
-                  >
-                    <div class="flex min-w-0 items-center gap-3">
-                      <span class="truncate font-medium">
-                        {entrant.participant_name ?? "TBD"}
+              <CardContent class="px-0 ">
+                <div class="mx-4 flex items-center gap-3 pt-3">
+                  {#each match as entrant, idx}
+                    {#if idx === 1}
+                      <span
+                        class="shrink-0 text-xs uppercase text-muted-foreground"
+                      >
+                        VS
                       </span>
+                    {/if}
 
-                      {#if hasBothParticipants && matchData.leadingParticipantId === entrant.participantId && currentMatch.status !== "complete"}
-                        <Badge variant="outline">Lead</Badge>
-                      {/if}
-                    </div>
-
-                    <span class="shrink-0 text-lg font-semibold tabular-nums"
-                      >{entrant.score}</span
+                    <div
+                      class={`flex min-w-0 flex-1 justify-between items-center gap-2 ${
+                        idx === 1 ? "flex-row-reverse" : ""
+                      }`}
                     >
+                      <div
+                        class={`flex items-center ${idx === 1 ? "flex-row-reverse" : ""}`}
+                      >
+                        <span class="min-w-0 truncate font-medium">
+                          {entrant.participant_name ?? "TBD"}
+                        </span>
 
-                    {#if entrant.winnerId !== null && entrant.winnerId === entrant.participantId}
-                      <Badge>Winner</Badge>
-                    {/if}
-                  </div>
-                {/each}
-
-                <div class="flex justify-end gap-4">
-                  {#if hasBothParticipants && selectedMatchId !== currentMatch.matchId && currentMatch.status !== "complete"}
-                    <Button onclick={() => onStartMatch(match)}>Load</Button>
-                  {/if}
-
-                  {#if currentMatch.bothRunFinished}
-                    {#if selectedMatchId === currentMatch.matchId}
-                      <AlertDialog bind:open={omtDialogOpen}>
-                        <AlertDialogTrigger>
-                          <Button variant="outline" disabled={isProcessing}
-                            >OMT</Button
-                          >
-                        </AlertDialogTrigger>
-
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Start OMT?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will reset the battle and start an OMT. Are
-                              you sure you want to continue?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isProcessing}
-                              >Cancel</AlertDialogCancel
-                            >
-
-                            <AlertDialogAction
-                              disabled={isProcessing}
-                              onclick={() => handleOMT(match)}
-                            >
-                              {#if isProcessing}
-                                Processing...
-                              {:else}
-                                Continue
-                              {/if}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-
-                      <AlertDialog bind:open={concludeDialogOpen}>
-                        <AlertDialogTrigger>
-                          <Button variant="outline" disabled={isProcessing}
-                            >Conclude</Button
-                          >
-                        </AlertDialogTrigger>
-
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Conclude match?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will finalize the result of this match. Are
-                              you sure?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isProcessing}
-                              >Cancel</AlertDialogCancel
-                            >
-
-                            <AlertDialogAction
-                              disabled={isProcessing}
-                              onclick={() => handleConclude()}
-                            >
-                              {#if isProcessing}
-                                Processing...
-                              {:else}
-                                Conclude
-                              {/if}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    {/if}
-                  {/if}
+                        {#if hasBothParticipants && matchData.leadingParticipantId === entrant.participantId && currentMatch.status !== "complete"}
+                          <Badge variant="outline">Lead</Badge>
+                        {/if}
+                      </div>
+                      <span
+                        class={`shrink-0 text-lg font-semibold tabular-nums ${
+                          entrant.participant_name && entrant.winnerId
+                            ? entrant.winnerId ===
+                              entrant.challongeParticipantId
+                              ? "text-green-500"
+                              : "text-muted-foreground/30"
+                            : ""
+                        }`}
+                      >
+                        {entrant.score}
+                      </span>
+                    </div>
+                  {/each}
                 </div>
+
+                {#if currentMatch.bothRunFinished && selectedMatchId === currentMatch.matchId}
+                  <Separator class="my-2" />
+                  <ButtonGroup.Root
+                    orientation="horizontal"
+                    class="flex justify-end w-full px-4 pt-2"
+                  >
+                    <AlertDialog bind:open={omtDialogOpen}>
+                      <AlertDialogTrigger>
+                        <Button
+                          variant="outline"
+                          class="rounded-r-none"
+                          disabled={isProcessing}>OMT</Button
+                        >
+                      </AlertDialogTrigger>
+
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Start OMT?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will reset the battle and start an OMT. Are you
+                            sure you want to continue?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isProcessing}
+                            >Cancel</AlertDialogCancel
+                          >
+
+                          <AlertDialogAction
+                            disabled={isProcessing}
+                            onclick={() => handleOMT(match)}
+                          >
+                            {#if isProcessing}
+                              Processing...
+                            {:else}
+                              Continue
+                            {/if}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <AlertDialog bind:open={concludeDialogOpen}>
+                      <AlertDialogTrigger>
+                        <Button
+                          variant="outline"
+                          class="-ml-px rounded-l-none"
+                          disabled={isProcessing}>Conclude</Button
+                        >
+                      </AlertDialogTrigger>
+
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Conclude match?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will finalize the result of this match. Are you
+                            sure?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isProcessing}
+                            >Cancel</AlertDialogCancel
+                          >
+
+                          <AlertDialogAction
+                            disabled={isProcessing}
+                            onclick={() => handleConclude()}
+                          >
+                            {#if isProcessing}
+                              Processing...
+                            {:else}
+                              Conclude
+                            {/if}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </ButtonGroup.Root>
+                {/if}
               </CardContent>
             </Card>
           {/each}

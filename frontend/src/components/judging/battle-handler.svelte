@@ -1,11 +1,18 @@
 <script lang="ts">
-  import { useQueryClient } from "@tanstack/svelte-query";
+  import {
+    createMutation,
+    createQuery,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
+  import { onDestroy } from "svelte";
 
   import type { Judgement } from "$src/lib/judging.svelte";
   import type { Stage } from "$src/lib/stage.svelte";
   import {
     ChangeLeader,
+    GetNote,
     UpdateMatchSingleParticipant,
+    UpdateNote,
   } from "$wails/go/main/App";
 
   import Button from "../ui/button/button.svelte";
@@ -13,6 +20,8 @@
   import CardContent from "../ui/card/card-content.svelte";
   import CardHeader from "../ui/card/card-header.svelte";
   import CardTitle from "../ui/card/card-title.svelte";
+  import Label from "../ui/label/label.svelte";
+  import Textarea from "../ui/textarea/textarea.svelte";
 
   let {
     tournamentID,
@@ -73,6 +82,49 @@
       judgement.processing = false;
     }
   }
+
+  let note = $state("");
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const noteQuery = createQuery(() => ({
+    queryKey: ["note", tournamentID, stage.matchId],
+    queryFn: () => GetNote(stage.matchId!),
+  }));
+
+  const updateNoteMutation = createMutation(() => ({
+    mutationFn: (text: string) => UpdateNote(stage.matchId!, text),
+    onError: (error) => {
+      console.error("Failed to update note:", error);
+    },
+  }));
+
+  $effect(() => {
+    const data = noteQuery.data;
+    if (data !== undefined) {
+      note = data;
+    }
+  });
+
+  function handleNoteChange(value: string) {
+    note = value;
+
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    const matchId = stage.matchId;
+    if (!matchId) return;
+
+    debounceTimer = setTimeout(() => {
+      updateNoteMutation.mutate(value);
+    }, 500);
+  }
+
+  onDestroy(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+  });
 </script>
 
 <Card class="gap-0 border-border/70 shadow-none">
@@ -92,6 +144,15 @@
         <span class="text-muted-foreground">/</span>
         <span>Chase <strong>{currentScore.chase}</strong></span>
       </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <Label>Quick note</Label>
+      <Textarea
+        class="h-24"
+        value={note}
+        oninput={(event) => handleNoteChange(event.currentTarget.value)}
+      />
     </div>
 
     <Button

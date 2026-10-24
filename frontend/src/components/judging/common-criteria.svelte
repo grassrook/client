@@ -29,7 +29,7 @@
   }
 </script>
 
-<Card class="col-span-2 gap-0 border-border/70 shadow-none">
+<Card class="col-span-2 gap-0 border-border/70 shadow-none h-full">
   <CardHeader class="pb-4">
     <CardTitle>{category.label}</CardTitle>
   </CardHeader>

@@ -7,6 +7,7 @@
 
   import type { Judgement } from "$src/lib/judging.svelte";
   import {
+    CreateTournamentActivityLog,
     GetAllQualifyingScores,
     UpdateEntrant,
     UpdateQualifyingScore,
@@ -42,6 +43,9 @@
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
+      });
     },
   }));
 
@@ -54,19 +58,36 @@
       entrantId: string;
       score: number;
       status: entrant.Entrant["status"];
-    }) =>
-      UpdateEntrant({
+    }) => {
+      await UpdateEntrant({
         TournamentID: tournament.id,
         EntrantID: entrantId,
         Score: score,
         Status: status,
-      }),
+      });
+
+      const current = entrants.find((entrant) => entrant.id === entrantId);
+      if (!current) {
+        console.error("no entrant found");
+        return;
+      }
+
+      await CreateTournamentActivityLog({
+        tournament_id: tournament.id,
+        content: `${current.name} scored ${score} on qualifying`,
+        logType: "QUALIFYING_SCORED",
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],
       });
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
       });
 
       const result = await queryClient.query({
@@ -171,7 +192,7 @@
 </script>
 
 <Card class="gap-0 border-border/70 shadow-none">
-  <CardHeader class="p-4">
+  <CardHeader class="pb-4">
     <CardTitle>Judgement</CardTitle>
   </CardHeader>
 

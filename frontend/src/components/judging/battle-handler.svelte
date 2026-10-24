@@ -72,6 +72,10 @@
       });
 
       await queryClient.invalidateQueries({
+        queryKey: ["logs", tournamentID],
+      });
+
+      await queryClient.invalidateQueries({
         queryKey: ["matches", tournamentID],
       });
 

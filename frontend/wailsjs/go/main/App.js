@@ -26,6 +26,10 @@ export function CreateTournament(arg1) {
   return window['go']['main']['App']['CreateTournament'](arg1);
 }
 
+export function CreateTournamentActivityLog(arg1) {
+  return window['go']['main']['App']['CreateTournamentActivityLog'](arg1);
+}
+
 export function DeleteCriteriaConfig(arg1) {
   return window['go']['main']['App']['DeleteCriteriaConfig'](arg1);
 }
@@ -68,6 +72,10 @@ export function GetNote(arg1) {
 
 export function GetTournament(arg1) {
   return window['go']['main']['App']['GetTournament'](arg1);
+}
+
+export function GetTournamentActivityLogs(arg1) {
+  return window['go']['main']['App']['GetTournamentActivityLogs'](arg1);
 }
 
 export function GetTournaments() {

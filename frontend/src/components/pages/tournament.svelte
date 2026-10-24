@@ -13,8 +13,10 @@
     GetEntrants,
     GetMatches,
     GetTournament,
+    GetTournamentActivityLogs,
   } from "$wails/go/main/App";
 
+  import ActivityLogs from "../activity-logs.svelte";
   import BattleHandler from "../judging/battle-handler.svelte";
   import EntrantList from "../judging/entrant-list.svelte";
   import Panel from "../judging/panel.svelte";
@@ -55,6 +57,11 @@
     queryFn: () => GetEntrants(tournamentID),
   }));
 
+  const logsQuery = createQuery(() => ({
+    queryKey: ["logs", tournamentID],
+    queryFn: () => GetTournamentActivityLogs(tournamentID),
+  }));
+
   let mounted = $state(false);
   onMount(() => {
     mounted = true;
@@ -92,48 +99,54 @@
       <div
         class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
       >
-        <StageCard {isQualifying}>
-          {#snippet stageContent({ setHasRoundedBottom })}
-            {#if isQualifying}
-              <EntrantList
-                tournament={tournamentQuery.data ?? {}}
-                entrants={entrantsQuery.data ?? []}
-                {setHasRoundedBottom}
-                bind:hidePanel
-              />
-            {:else}
-              <Matches
-                {tournamentID}
-                {stage}
-                matches={matchesQuery.data ?? []}
-                activeBattles={activeBattles.data ?? []}
-                {judgement}
-                progress={tournamentQuery.data.progress ?? 0}
-                finalized={tournamentQuery.data.finalized ?? false}
-                {setHasRoundedBottom}
-              />
-            {/if}
-          {/snippet}
-        </StageCard>
+        <div
+          class="mx-auto grid max-w-6xl grid-cols-1 items-start lg:grid-cols-3 lg:gap-4"
+        >
+          <div class="min-w-0 lg:sticky lg:top-4 lg:col-span-1 lg:self-start">
+            <ActivityLogs logs={logsQuery.data ?? []} />
+          </div>
 
-        {#if !hidePanel}
-          <Panel
-            {stage}
-            {judgement}
-            tournament={tournamentQuery.data ?? {}}
-            {isQualifying}
-          >
-            {#if isQualifying}
-              <QualifyingHandler
-                {tournament}
+          <div class="min-w-0 lg:col-span-2">
+            <StageCard>
+              {#if isQualifying}
+                <EntrantList
+                  tournament={tournamentQuery.data ?? {}}
+                  entrants={entrantsQuery.data ?? []}
+                  bind:hidePanel
+                />
+              {:else}
+                <Matches
+                  {tournamentID}
+                  {stage}
+                  matches={matchesQuery.data ?? []}
+                  activeBattles={activeBattles.data ?? []}
+                  {judgement}
+                  progress={tournamentQuery.data.progress ?? 0}
+                  finalized={tournamentQuery.data.finalized ?? false}
+                />
+              {/if}
+            </StageCard>
+
+            {#if !hidePanel}
+              <Panel
+                {stage}
                 {judgement}
-                entrants={entrantsQuery.data ?? []}
-              />
-            {:else}
-              <BattleHandler {tournamentID} {judgement} {stage} />
+                tournament={tournamentQuery.data ?? {}}
+                {isQualifying}
+              >
+                {#if isQualifying}
+                  <QualifyingHandler
+                    {tournament}
+                    {judgement}
+                    entrants={entrantsQuery.data ?? []}
+                  />
+                {:else}
+                  <BattleHandler {tournamentID} {judgement} {stage} />
+                {/if}
+              </Panel>
             {/if}
-          </Panel>
-        {/if}
+          </div>
+        </div>
       </div>
     {/if}
   </div>

@@ -42,6 +42,8 @@ export function GetNote(arg1:string):Promise<string>;
 
 export function GetTournament(arg1:string):Promise<tournament.Tournament>;
 
+export function GetTournamentActivityLogs(arg1:string):Promise<Array<tournamentactivitylog.TournamentActivityLog>>;
+
 export function GetTournaments():Promise<Array<tournament.Tournament>>;
 
 export function HasChallongeAPIKey():Promise<boolean>;

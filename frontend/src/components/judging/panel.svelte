@@ -42,39 +42,34 @@
 
 <div class="relative" aria-busy={judgement.processing}>
   {#if isQualifying || stage.matchId}
-    <Card class="rounded-t-none border-t-0">
+    <Card>
       <CardContent>
-        <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
-          <div
-            class="grid min-w-0 grid-cols-1 items-stretch gap-3 md:grid-cols-2 md:gap-4"
-          >
-            {#if common}
-              {@const [, category] = common}
-              <div class={`h-full ${!isQualifying ? "md:col-span-2" : ""}`}>
-                <CommonCriteria {category} {judgement} {isQualifying} />
-              </div>
-            {/if}
+        <div class="grid min-w-0 grid-cols-2 items-stretch gap-3 md:gap-2">
+          {#if common}
+            {@const [, category] = common}
+            <div class={`h-full ${!isQualifying ? "col-span-2" : ""}`}>
+              <CommonCriteria {category} {judgement} {isQualifying} />
+            </div>
+          {/if}
 
-            {#if lead}
-              {@const [, category] = lead}
-              <div class="h-full">
-                <CriteriaWrapper {category} role="lead" {judgement} />
-              </div>
-            {/if}
+          {#if lead}
+            {@const [, category] = lead}
+            <div class="h-full">
+              <CriteriaWrapper {category} role="lead" {judgement} />
+            </div>
+          {/if}
 
-            {#if chase && !isQualifying}
-              {@const [, category] = chase}
-              <div class="h-full">
-                <CriteriaWrapper {category} role="chase" {judgement} />
-              </div>
-            {/if}
-          </div>
-
-          <div class="min-w-0 xl:sticky xl:top-0">
-            {@render children()}
-          </div>
+          {#if chase && !isQualifying}
+            {@const [, category] = chase}
+            <div class="h-full">
+              <CriteriaWrapper {category} role="chase" {judgement} />
+            </div>
+          {/if}
         </div>
-      </CardContent>
+        <div class="mt-2">
+          {@render children()}
+        </div></CardContent
+      >
     </Card>
   {/if}
 

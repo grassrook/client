@@ -74,6 +74,10 @@ export function GetTournament(arg1) {
   return window['go']['main']['App']['GetTournament'](arg1);
 }
 
+export function GetTournamentActivityLogs(arg1) {
+  return window['go']['main']['App']['GetTournamentActivityLogs'](arg1);
+}
+
 export function GetTournaments() {
   return window['go']['main']['App']['GetTournaments']();
 }

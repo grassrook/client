@@ -43,6 +43,9 @@
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
+      });
     },
   }));
 
@@ -81,6 +84,10 @@
       });
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
       });
 
       const result = await queryClient.query({

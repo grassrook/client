@@ -408,6 +408,28 @@ export namespace tournamentactivitylog {
 	        this.logType = source["logType"];
 	    }
 	}
+	export class TournamentActivityLog {
+	    id: string;
+	    tournament_id: string;
+	    content: string;
+	    logType: string;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TournamentActivityLog(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.tournament_id = source["tournament_id"];
+	        this.content = source["content"];
+	        this.logType = source["logType"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 
 }
 

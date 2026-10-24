@@ -57,7 +57,6 @@
     activeBattles,
     progress,
     finalized,
-    setHasRoundedBottom,
   }: {
     tournamentID: string;
     matches: Tournament.GroupedMatches;
@@ -66,7 +65,6 @@
     activeBattles: Battles;
     progress: number;
     finalized: boolean;
-    setHasRoundedBottom: (value: boolean) => void;
   } = $props();
 
   const queryClient = useQueryClient();
@@ -84,7 +82,6 @@
   }
 
   function onStartMatch(match: repository.Match[]) {
-    setHasRoundedBottom(false);
     stage.clear();
     judgement.clear();
 
@@ -178,6 +175,9 @@
     await queryClient.invalidateQueries({
       queryKey: ["matches", tournamentID],
     });
+    await queryClient.invalidateQueries({
+      queryKey: ["logs", tournamentID],
+    });
 
     onStartMatch(match);
   }
@@ -198,9 +198,12 @@
       queryKey: ["matches", tournamentID],
     });
 
+    await queryClient.invalidateQueries({
+      queryKey: ["logs", tournamentID],
+    });
+
     stage.clear();
     selectedMatchId = undefined;
-    setHasRoundedBottom(true);
   }
 
   let isProcessing = $state(false);
@@ -272,7 +275,6 @@
   }
 
   function clearMatchSelection() {
-    setHasRoundedBottom(true);
     stage.clear();
     judgement.clear();
     selectedMatchId = undefined;

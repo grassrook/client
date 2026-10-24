@@ -46,12 +46,10 @@
     tournament,
     entrants,
     hidePanel = $bindable(false),
-    setHasRoundedBottom,
   }: {
     tournament: tournament.Tournament;
     entrants: entrant.Entrant[];
     hidePanel?: boolean;
-    setHasRoundedBottom: (value: boolean) => void;
   } = $props();
 
   const queryClient = useQueryClient();
@@ -67,6 +65,10 @@
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
       });
     },
   }));
@@ -103,6 +105,9 @@
       await queryClient.query({
         queryKey: ["scores", tournament.id],
         queryFn: () => GetAllQualifyingScores(tournament.id),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
       });
     },
   }));
@@ -220,6 +225,10 @@
         queryKey: ["tournaments"],
       });
 
+      await queryClient.invalidateQueries({
+        queryKey: ["logs", tournament.id],
+      });
+
       concludeDialogOpen = false;
     },
     onError: (error) => {
@@ -289,7 +298,6 @@
 
   $effect(() => {
     hidePanel = concluding;
-    setHasRoundedBottom(!!concluding);
   });
 </script>
 

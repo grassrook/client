@@ -344,6 +344,10 @@ func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, r
 	return a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
 }
 
+func (a *App) GetTournamentActivityLogs(tournamentID string) ([]tournamentactivitylog.TournamentActivityLog, error) {
+	return a.tournamentActivityLogsRepo.GetByTournamentID(a.ctx, tournamentID)
+}
+
 func (a *App) CreateTournamentActivityLog(input tournamentactivitylog.CreateTournamentActivityLogInput) error {
 	return a.tournamentActivityLogsRepo.Create(a.ctx, input)
 }

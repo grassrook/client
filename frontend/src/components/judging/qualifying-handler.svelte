@@ -7,6 +7,7 @@
 
   import type { Judgement } from "$src/lib/judging.svelte";
   import {
+    CreateTournamentActivityLog,
     GetAllQualifyingScores,
     UpdateEntrant,
     UpdateQualifyingScore,
@@ -54,13 +55,26 @@
       entrantId: string;
       score: number;
       status: entrant.Entrant["status"];
-    }) =>
-      UpdateEntrant({
+    }) => {
+      await UpdateEntrant({
         TournamentID: tournament.id,
         EntrantID: entrantId,
         Score: score,
         Status: status,
-      }),
+      });
+
+      const current = entrants.find((entrant) => entrant.id === entrantId);
+      if (!current) {
+        console.error("no entrant found");
+        return;
+      }
+
+      await CreateTournamentActivityLog({
+        tournament_id: tournament.id,
+        content: `${current.name} scored ${score} on qualifying`,
+        logType: "QUALIFYING_SCORED",
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],

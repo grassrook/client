@@ -31,6 +31,7 @@
   import { Stage } from "$src/lib/stage.svelte";
   import {
     ConcludeBattle,
+    CreateTournamentActivityLog,
     ResetBattle,
     SyncTournament,
     UpdateNote,
@@ -256,6 +257,11 @@
 
     try {
       await UpdateTournamentState(tournamentID, "finalize");
+      await CreateTournamentActivityLog({
+        tournament_id: tournamentID,
+        content: `Tournament marked as finished`,
+        logType: "TOURNAMENT_FINISHED",
+      });
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournamentID],
       });

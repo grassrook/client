@@ -10,6 +10,7 @@ import (
 	"judginginternal/internal/models/entrant"
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
 	"judginginternal/internal/models/tournament"
+	tournamentactivitylog "judginginternal/internal/models/tournament_activity_log"
 	"net/http"
 	"path"
 
@@ -20,14 +21,15 @@ var client *sql.DB = nil
 
 // App struct
 type App struct {
-	ctx                  context.Context
-	cfg                  *config.Config
-	tournamentRepo       repository.TournamentRepository
-	matchesRepo          repository.MatchesRepository
-	bracketRepo          repository.BracketRepository
-	entrantsRepo         repository.EntrantsRepository
-	criteriaConfigRepo   repository.CriteriaConfigRepository
-	qualifyingScoresRepo repository.QualfyingScoresRepository
+	ctx                        context.Context
+	cfg                        *config.Config
+	tournamentRepo             repository.TournamentRepository
+	matchesRepo                repository.MatchesRepository
+	bracketRepo                repository.BracketRepository
+	entrantsRepo               repository.EntrantsRepository
+	criteriaConfigRepo         repository.CriteriaConfigRepository
+	qualifyingScoresRepo       repository.QualfyingScoresRepository
+	tournamentActivityLogsRepo repository.TournamentActivityLogsRepository
 }
 
 // NewApp creates a new App application struct
@@ -67,6 +69,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.qualifyingScoresRepo = &repository.SQLiteQualifyingScoresRepository{
+		DB: client,
+	}
+
+	a.tournamentActivityLogsRepo = &repository.SQLiteTournamentActivityLogsRepository{
 		DB: client,
 	}
 
@@ -134,6 +140,16 @@ func (a *App) CreateTournament(req repository.CreateTournamentRequest) (tourname
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Failed to create tournament: %v", err)
 		return tournament.Tournament{}, err
+	}
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: t.ID,
+		Content:      fmt.Sprintf("Tournament %q created", t.Name),
+		LogType:      tournamentactivitylog.TOURNAMENT_INIT,
+	}
+
+	if err := a.tournamentActivityLogsRepo.Create(a.ctx, log); err != nil {
+		return *t, nil
 	}
 
 	return *t, err
@@ -220,11 +236,18 @@ func (a *App) ConcludeQualifers(tournamentId string) error {
 		runtime.LogErrorf(a.ctx, "Failed to conclude qualifers: %v", err)
 		return err
 	}
-	return nil
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentId,
+		Content:      "Qualifying finished",
+		LogType:      tournamentactivitylog.QUALIFYING_FINISHED,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
 }
 
 func (a *App) ConcludeBattle(tournamentID, matchID string) error {
-	err := a.matchesRepo.ConcludeBattle(
+	winner, err := a.matchesRepo.ConcludeBattle(
 		a.ctx,
 		tournamentID,
 		matchID,
@@ -235,7 +258,13 @@ func (a *App) ConcludeBattle(tournamentID, matchID string) error {
 		return err
 	}
 
-	return nil
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentID,
+		Content:      fmt.Sprintf("%s won with score of %.2f", winner.Name, winner.Score),
+		LogType:      tournamentactivitylog.WON_BATTLE,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
 }
 
 func (a *App) GetNote(matchID string) (string, error) {
@@ -256,7 +285,13 @@ func (a *App) ResetBattle(tournamentID, matchID string) error {
 		return err
 	}
 
-	return nil
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentID,
+		Content:      fmt.Sprintf("Match one more time #%s", matchID),
+		LogType:      tournamentactivitylog.OMT,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
 }
 
 func (a *App) ChangeLeader(tournamentID, matchID string) error {
@@ -307,4 +342,8 @@ func (a *App) GetAllQualifyingScores(tournamentID string) ([]qualifyingscore.Dat
 
 func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, round int, score float64, status string) error {
 	return a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
+}
+
+func (a *App) CreateTournamentActivityLog(input tournamentactivitylog.CreateTournamentActivityLogInput) error {
+	return a.tournamentActivityLogsRepo.Create(a.ctx, input)
 }

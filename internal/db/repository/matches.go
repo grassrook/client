@@ -57,6 +57,13 @@ type UpdateMatchSingleParticipantParams struct {
 	AppendScore   bool
 }
 
+type MatchParticipant struct {
+	Name                   string
+	ParticipantID          string
+	Score                  float64
+	ChallongeParticipantID string
+}
+
 type MatchesRepository interface {
 	GetMatch(ctx context.Context, matchID string) (Match, error)
 	GetMatches(ctx context.Context, tournamentID string) ([][][]Match, error)
@@ -64,7 +71,7 @@ type MatchesRepository interface {
 	GetNodeByID(ctx context.Context, id string) (Node, error)
 	GetActiveMatches(ctx context.Context, tournamentID string) ([]ActiveBattle, error)
 	ChangeLeader(ctx context.Context, tournamentID, matchID string) error
-	ConcludeBattle(ctx context.Context, tournamentID string, matchID string) error
+	ConcludeBattle(ctx context.Context, tournamentID string, matchID string) (MatchParticipant, error)
 	ResetBattle(ctx context.Context, tournamentID string, matchID string) error
 	GetNote(ctx context.Context, matchID string) (string, error)
 	UpdateNote(ctx context.Context, matchID, text string) error
@@ -592,14 +599,14 @@ func (r *SQLiteMatchesRepository) ChangeLeader(
 
 	return nil
 }
-
 func (r *SQLiteMatchesRepository) ConcludeBattle(
 	ctx context.Context,
 	tournamentID string,
 	matchID string,
-) error {
+) (MatchParticipant, error) {
 	const matchQuery = `
 		SELECT
+			p.name,
 			n.participant_id,
 			n.score,
 			p.challonge_participant_id
@@ -611,39 +618,34 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 
 	rows, err := r.DB.QueryContext(ctx, matchQuery, matchID, tournamentID)
 	if err != nil {
-		return fmt.Errorf("query match participants: %w", err)
+		return MatchParticipant{}, fmt.Errorf("query match participants: %w", err)
 	}
 
-	type matchParticipant struct {
-		participantID          string
-		score                  float64
-		challongeParticipantID string
-	}
-
-	var participants []matchParticipant
+	var participants []MatchParticipant
 
 	for rows.Next() {
 		var (
-			p           matchParticipant
+			p           MatchParticipant
 			score       sql.NullFloat64
 			challongeID sql.NullString
 		)
 
 		if err := rows.Scan(
-			&p.participantID,
+			&p.Name,
+			&p.ParticipantID,
 			&score,
 			&challongeID,
 		); err != nil {
 			rows.Close()
-			return fmt.Errorf("scan match participant: %w", err)
+			return MatchParticipant{}, fmt.Errorf("scan match participant: %w", err)
 		}
 
 		if score.Valid {
-			p.score = score.Float64
+			p.Score = score.Float64
 		}
 
 		if challongeID.Valid {
-			p.challongeParticipantID = challongeID.String
+			p.ChallongeParticipantID = challongeID.String
 		}
 
 		participants = append(participants, p)
@@ -651,12 +653,12 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		return fmt.Errorf("iterate match participants: %w", err)
+		return MatchParticipant{}, fmt.Errorf("iterate match participants: %w", err)
 	}
 	rows.Close()
 
 	if len(participants) != 2 {
-		return fmt.Errorf(
+		return MatchParticipant{}, fmt.Errorf(
 			"match must contain exactly two participants, got %d",
 			len(participants),
 		)
@@ -664,23 +666,23 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 
 	p1, p2 := participants[0], participants[1]
 
-	if p1.challongeParticipantID == "" ||
-		p2.challongeParticipantID == "" {
-		return fmt.Errorf(
+	if p1.ChallongeParticipantID == "" ||
+		p2.ChallongeParticipantID == "" {
+		return MatchParticipant{}, fmt.Errorf(
 			"one or more participants do not have a Challonge participant ID",
 		)
 	}
 
-	if p1.score == p2.score {
-		return fmt.Errorf(
+	if p1.Score == p2.Score {
+		return MatchParticipant{}, fmt.Errorf(
 			"match cannot be concluded because the scores are tied: %v, %v",
-			p1.score,
-			p2.score,
+			p1.Score,
+			p2.Score,
 		)
 	}
 
 	winner, loser := p1, p2
-	if p2.score > p1.score {
+	if p2.Score > p1.Score {
 		winner, loser = p2, p1
 	}
 
@@ -695,9 +697,9 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 	err = r.DB.QueryRowContext(ctx, bracketQuery, tournamentID).Scan(&bracketURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("bracket not found")
+			return MatchParticipant{}, fmt.Errorf("bracket not found")
 		}
-		return fmt.Errorf("query bracket: %w", err)
+		return MatchParticipant{}, fmt.Errorf("query bracket: %w", err)
 	}
 
 	requestBody := struct {
@@ -727,21 +729,21 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 		Advancing     *bool  `json:"advancing,omitempty"`
 	}{
 		{
-			ParticipantID: winner.challongeParticipantID,
-			ScoreSet:      strconv.FormatFloat(winner.score, 'f', -1, 64),
+			ParticipantID: winner.ChallongeParticipantID,
+			ScoreSet:      strconv.FormatFloat(winner.Score, 'f', -1, 64),
 			Rank:          1,
 			Advancing:     &advancing,
 		},
 		{
-			ParticipantID: loser.challongeParticipantID,
-			ScoreSet:      strconv.FormatFloat(loser.score, 'f', -1, 64),
+			ParticipantID: loser.ChallongeParticipantID,
+			ScoreSet:      strconv.FormatFloat(loser.Score, 'f', -1, 64),
 			Rank:          2,
 		},
 	}
 
 	body, err := json.Marshal(requestBody)
 	if err != nil {
-		return fmt.Errorf("marshal Challonge request: %w", err)
+		return MatchParticipant{}, fmt.Errorf("marshal Challonge request: %w", err)
 	}
 
 	endpoint := fmt.Sprintf(
@@ -757,7 +759,7 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return fmt.Errorf("create Challonge request: %w", err)
+		return MatchParticipant{}, fmt.Errorf("create Challonge request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/vnd.api+json")
@@ -767,17 +769,17 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("update Challonge match: %w", err)
+		return MatchParticipant{}, fmt.Errorf("update Challonge match: %w", err)
 	}
 	defer resp.Body.Close()
 
 	challongeResponse, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("read Challonge response: %w", err)
+		return MatchParticipant{}, fmt.Errorf("read Challonge response: %w", err)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf(
+		return MatchParticipant{}, fmt.Errorf(
 			"Challonge returned status %d: %s",
 			resp.StatusCode,
 			string(challongeResponse),
@@ -786,18 +788,18 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin conclude battle transaction: %w", err)
+		return MatchParticipant{}, fmt.Errorf("begin conclude battle transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	_, err = tx.ExecContext(
 		ctx,
 		`UPDATE nodes SET winner_id = ? WHERE match_id = ?`,
-		winner.challongeParticipantID,
+		winner.ChallongeParticipantID,
 		matchID,
 	)
 	if err != nil {
-		return fmt.Errorf("update local match winner: %w", err)
+		return MatchParticipant{}, fmt.Errorf("update local match winner: %w", err)
 	}
 
 	_, err = tx.ExecContext(
@@ -806,14 +808,14 @@ func (r *SQLiteMatchesRepository) ConcludeBattle(
 		matchID,
 	)
 	if err != nil {
-		return fmt.Errorf("delete active battles: %w", err)
+		return MatchParticipant{}, fmt.Errorf("delete active battles: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit conclude battle: %w", err)
+		return MatchParticipant{}, fmt.Errorf("commit conclude battle: %w", err)
 	}
 
-	return nil
+	return winner, nil
 }
 
 func (r *SQLiteMatchesRepository) ResetBattle(

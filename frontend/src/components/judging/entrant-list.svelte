@@ -17,6 +17,7 @@
   } from "$src/components/ui/dropdown-menu";
   import {
     ConcludeQualifers,
+    CreateTournamentActivityLog,
     GetAllQualifyingScores,
     SyncTournament,
     UpdateEntrant,
@@ -113,10 +114,25 @@
     status: entrant.Entrant["status"],
     participantID: string,
   ) {
+    const current = entrants.find(
+      (entrant) => entrant.participantId === participantID,
+    );
+    if (!current) return;
+
     if (status === "pending") {
       await handlePending(participantID);
+      await CreateTournamentActivityLog({
+        tournament_id: tournament.id,
+        content: `${current.name} set status to PENDING`,
+        logType: "QUALIFYING_RESET",
+      });
     } else if (status === "not_qualified") {
       await handleNotQualified(participantID);
+      await CreateTournamentActivityLog({
+        tournament_id: tournament.id,
+        content: `${current.name} set status to NOT_QUALIFIED`,
+        logType: "NOT_QUALIFIED",
+      });
     }
 
     let req: QualifierMutationReq = {

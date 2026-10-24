@@ -390,3 +390,24 @@ export namespace tournament {
 
 }
 
+export namespace tournamentactivitylog {
+	
+	export class CreateTournamentActivityLogInput {
+	    tournament_id: string;
+	    content: string;
+	    logType: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateTournamentActivityLogInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tournament_id = source["tournament_id"];
+	        this.content = source["content"];
+	        this.logType = source["logType"];
+	    }
+	}
+
+}
+

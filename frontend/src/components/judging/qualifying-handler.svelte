@@ -171,7 +171,7 @@
 </script>
 
 <Card class="gap-0 border-border/70 shadow-none">
-  <CardHeader class="p-4">
+  <CardHeader class="pb-4">
     <CardTitle>Judgement</CardTitle>
   </CardHeader>
 

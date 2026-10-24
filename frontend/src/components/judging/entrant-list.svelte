@@ -1,4 +1,5 @@
 <script lang="ts">
+  /* eslint-disable no-useless-assignment */
   import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
   import {
     createMutation,
@@ -43,9 +44,13 @@
   let {
     tournament,
     entrants,
+    hidePanel = $bindable(false),
+    setHasRoundedBottom,
   }: {
     tournament: tournament.Tournament;
     entrants: entrant.Entrant[];
+    hidePanel?: boolean;
+    setHasRoundedBottom: (value: boolean) => void;
   } = $props();
 
   const queryClient = useQueryClient();
@@ -264,6 +269,11 @@
 
   const concluding = $derived.by(() => {
     return !orderedEntrants.hasPendingScores;
+  });
+
+  $effect(() => {
+    hidePanel = concluding;
+    setHasRoundedBottom(!!concluding);
   });
 </script>
 

@@ -30,16 +30,18 @@
 
 <div class="min-h-svh bg-muted/20 text-foreground">
   <Sidebar.Provider>
-    <Sidebar.Root>
+    <Sidebar.Root collapsible="icon" class="bg-sidebar">
       <Sidebar.Header>
-        <div class="flex h-16 items-center gap-3 px-4">
+        <div
+          class="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
           <div
-            class="flex size-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
+            class="flex size-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:hidden"
           >
             <Trophy class="size-4" aria-hidden="true" />
           </div>
 
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
             <p class="truncate text-sm font-semibold text-sidebar-foreground">
               Judging Console
             </p>
@@ -47,6 +49,8 @@
               Tournament operations
             </p>
           </div>
+
+          <Sidebar.Trigger />
         </div>
       </Sidebar.Header>
 
@@ -72,7 +76,9 @@
                       }}
                     >
                       <House aria-hidden="true" />
-                      <span>Home</span>
+                      <span class="group-data-[collapsible=icon]:hidden"
+                        >Home</span
+                      >
                     </a>
                   {/snippet}
                 </Sidebar.MenuButton>
@@ -84,8 +90,14 @@
                   {#snippet child({ props })}
                     <div {...props} aria-disabled="true">
                       <UsersRound aria-hidden="true" />
-                      <span>Drivers</span>
-                      <span class="ml-auto text-[10px] uppercase">Soon</span>
+                      <span class="group-data-[collapsible=icon]:hidden"
+                        >Drivers</span
+                      >
+                      <span
+                        class="ml-auto text-[10px] uppercase group-data-[collapsible=icon]:hidden"
+                      >
+                        Soon
+                      </span>
                     </div>
                   {/snippet}
                 </Sidebar.MenuButton>
@@ -130,8 +142,10 @@
       <Sidebar.Footer class="px-0">
         <Separator class="bg-sidebar-border" />
 
-        <div class="flex items-center justify-between gap-3 p-3">
-          <div class="min-w-0">
+        <div
+          class="flex items-center justify-between gap-3 p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <div class="min-w-0 group-data-[collapsible=icon]:hidden">
             <p class="text-xs font-medium text-sidebar-foreground">
               Appearance
             </p>
@@ -147,7 +161,7 @@
 
     <Sidebar.Inset>
       <header
-        class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-8"
+        class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/50 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-8 lg:hidden"
       >
         <div class="flex items-center gap-3">
           <Sidebar.Trigger />
@@ -156,7 +170,6 @@
             <p class="text-sm font-semibold lg:hidden">Judging Console</p>
           </div>
         </div>
-
         <div class="lg:hidden">
           <ThemeToggle />
         </div>

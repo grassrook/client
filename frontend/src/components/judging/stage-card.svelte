@@ -3,23 +3,40 @@
 
   import Card from "../ui/card/card.svelte";
   import CardContent from "../ui/card/card-content.svelte";
-  import CardHeader from "../ui/card/card-header.svelte";
-  import CardTitle from "../ui/card/card-title.svelte";
-  import Separator from "../ui/separator/separator.svelte";
+
+  let hasRoundedBottom = $state(true);
+
+  $effect(() => {
+    if (isQualifying) {
+      hasRoundedBottom = false;
+    }
+  });
 
   let {
-    children,
+    isQualifying,
+    stageContent,
   }: {
-    children: Snippet<[]>;
+    isQualifying: boolean;
+    stageContent: Snippet<
+      [
+        {
+          hasRoundedBottom: boolean;
+          setHasRoundedBottom: (value: boolean) => void;
+        },
+      ]
+    >;
   } = $props();
 </script>
 
-<Card class="gap-0 border-border/70 shadow-none">
-  <CardHeader class="pb-4">
-    <CardTitle>Stage</CardTitle>
-  </CardHeader>
-  <Separator />
-  <CardContent class="pt-4 space-y-4">
-    {@render children()}
+<Card
+  class={`gap-0 border-border/70 shadow-none ${
+    hasRoundedBottom ? "rounded-b-xl border-b" : "rounded-b-none border-b-0"
+  }`}
+>
+  <CardContent class="space-y-4">
+    {@render stageContent({
+      hasRoundedBottom,
+      setHasRoundedBottom: (value) => (hasRoundedBottom = value),
+    })}
   </CardContent>
 </Card>

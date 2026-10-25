@@ -31,6 +31,15 @@
   // tournament has started
   const editable = $derived(tournament.status === "pending");
 
+  // the order is shuffled when the tournament starts, so there is no point in
+  // letting the user arrange it by hand
+  const randomized = $derived(Boolean(tournament.randomizeQualifyingOrder));
+  const canReorder = $derived(editable && !randomized);
+
+  $effect(() => {
+    console.log(tournament);
+  });
+
   const orderIds = $derived.by(() => {
     const order = tournament.qualifying_order as unknown as string | string[];
     if (Array.isArray(order)) return order;
@@ -109,7 +118,7 @@
   let overIndex = $state<number | null>(null);
 
   function handleDragStart(e: DragEvent, index: number) {
-    if (!editable) return;
+    if (!canReorder) return;
     dragIndex = index;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = "move";
@@ -118,7 +127,7 @@
   }
 
   function handleDragOver(e: DragEvent, index: number) {
-    if (!editable || dragIndex === null) return;
+    if (!canReorder || dragIndex === null) return;
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     overIndex = index;
@@ -128,7 +137,7 @@
     e.preventDefault();
     const from = dragIndex;
     resetDrag();
-    if (!editable || from === null || from === index) return;
+    if (!canReorder || from === null || from === index) return;
 
     const next = [...items];
     const [moved] = next.splice(from, 1);
@@ -202,7 +211,12 @@
           {items.length}
           {items.length === 1 ? "participant" : "participants"} registered.
           {#if editable}
-            Drag rows to change the qualifying order.
+            {#if randomized}
+              The qualifying order will be randomized once the tournament
+              starts.
+            {:else}
+              Drag rows to change the qualifying order.
+            {/if}
           {/if}
         </p>
       </div>
@@ -245,7 +259,7 @@
         <Table.Root>
           <Table.Header>
             <Table.Row>
-              {#if editable}
+              {#if canReorder}
                 <Table.Head class="w-10"></Table.Head>
               {/if}
               <Table.Head class="w-16">#</Table.Head>
@@ -258,7 +272,7 @@
           <Table.Body>
             {#each items as entrant, index (entrant.id)}
               <Table.Row
-                draggable={editable}
+                draggable={canReorder}
                 ondragstart={(e) => handleDragStart(e, index)}
                 ondragover={(e) => handleDragOver(e, index)}
                 ondrop={(e) => handleDrop(e, index)}
@@ -274,7 +288,7 @@
                       : "border-t-2 border-t-primary"),
                 ]}
               >
-                {#if editable}
+                {#if canReorder}
                   <Table.Cell
                     class="cursor-grab text-muted-foreground active:cursor-grabbing"
                   >

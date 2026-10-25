@@ -548,6 +548,7 @@ SELECT
 	t3.url,
 	t1.criteria_config,
 	t1.qualifying_rounds,
+	t1.randomize_qualifying_order,
 	CASE WHEN t3.status = 'finalized' THEN 1 ELSE 0 END AS finalized
 FROM tournaments t1
 LEFT JOIN tracks t2
@@ -566,6 +567,7 @@ WHERE t1.id = ?
 		&t.URL,
 		&t.CriteriaConfig,
 		&t.QualifyingRounds,
+		&t.RandomizeQualifyingOrder,
 		&t.Finalized,
 	)
 	if err != nil {

@@ -188,13 +188,9 @@
 </script>
 
 <div
-  class="gap-0 rounded-xl border border-border/70 text-card-foreground shadow-none"
+  class="gap-0 rounded-xl border border-border/70 text-card-foreground shadow-none p-4"
 >
-  <div class="px-6 pt-6 pb-4">
-    <div class="font-semibold leading-none tracking-tight">Judgement</div>
-  </div>
-
-  <div class="space-y-3 px-6 pb-6 pt-0">
+  <div class="space-y-3">
     <div
       class="flex items-center justify-between gap-4 rounded-md border bg-muted/30 px-3 py-2.5"
     >

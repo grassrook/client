@@ -39,7 +39,7 @@
   const chase = $derived(categories.find(([id]) => id === "chase"));
 </script>
 
-<div class="relative" aria-busy={judgement.processing}>
+<div class="relative mt-2" aria-busy={judgement.processing}>
   {#if isQualifying || stage.matchId}
     <div class="rounded-xl border text-card-foreground">
       <div class="p-2">

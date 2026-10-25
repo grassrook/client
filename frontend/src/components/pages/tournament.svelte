@@ -72,7 +72,7 @@
 </script>
 
 {#if mounted}
-  <div in:fade={{ duration: 300 }}>
+  <div class="space-y-6 pb-4" in:fade={{ duration: 300 }}>
     <div
       class="sticky top-0 z-50 mx-auto w-full bg-background backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
@@ -102,7 +102,7 @@
       {@const tournament = tournamentQuery.data}
       {@const isQualifying = tournament.status === "qualifying"}
 
-      <div class="relative">
+      <div class="space-y-4 relative">
         <aside
           class="fixed inset-y-0 right-0 z-0 hidden w-80 overflow-y-auto lg:block border-l bg-sidebar/10"
         >
@@ -118,7 +118,7 @@
 
         {#if tournament.status === "qualifying" || tournament.status === "elimination"}
           <div class="mr-0 lg:mr-80">
-            <div class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:py-8">
+            <div class="mx-auto max-w-6xl space-y-1 px-4 sm:px-6">
               <div class="min-w-0">
                 <StageCard>
                   {#if isQualifying}

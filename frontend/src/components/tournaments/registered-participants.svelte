@@ -194,9 +194,7 @@
 </script>
 
 <div class="mr-0 lg:mr-80">
-  <div
-    class="mx-auto max-w-6xl space-y-1 px-4 py-6 pb-2 sm:px-6 lg:py-8 lg:pb-2"
-  >
+  <div class="mx-auto max-w-6xl space-y-1 px-4 pb-2 sm:px-6 lg:pb-2">
     <div class="flex items-end justify-between mb-4">
       <div>
         <h2 class="text-lg font-semibold">Participants</h2>

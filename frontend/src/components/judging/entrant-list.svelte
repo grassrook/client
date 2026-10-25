@@ -230,6 +230,7 @@
       });
 
       concludeDialogOpen = false;
+      hidePanel = false;
     },
     onError: (error) => {
       console.error("Failed to conclude qualifiers:", error);

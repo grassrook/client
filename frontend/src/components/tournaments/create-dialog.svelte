@@ -27,11 +27,7 @@
   import * as Popover from "$src/components/ui/popover";
   import * as Select from "$src/components/ui/select";
   import Switch from "$src/components/ui/switch/switch.svelte";
-  import {
-    CreateTournament,
-    GetCriteriaConfigs,
-    InitializeQualifyingScores,
-  } from "$wails/go/main/App";
+  import { CreateTournament, GetCriteriaConfigs } from "$wails/go/main/App";
 
   let { open = $bindable(false) } = $props();
   let error = $state("");
@@ -70,7 +66,7 @@
       randomizeQualifyingOrder: boolean;
       criteriaConfigID: number;
     }) => {
-      const tournament = await CreateTournament({
+      await CreateTournament({
         name,
         size,
         startingDate,
@@ -79,7 +75,6 @@
         criteriaConfigID,
         qualifyingRounds: Number(qualifyingRounds),
       });
-      await InitializeQualifyingScores(tournament.id);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({

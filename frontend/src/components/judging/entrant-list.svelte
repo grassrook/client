@@ -119,37 +119,41 @@
     status: entrant.Entrant["status"],
     participantID: string,
   ) {
-    const current = entrants.find(
-      (entrant) => entrant.participantId === participantID,
-    );
-    if (!current) return;
+    try {
+      const current = entrants.find(
+        (entrant) => entrant.participantId === participantID,
+      );
+      if (!current) return;
 
-    if (status === "pending") {
-      await handlePending(participantID);
-      await CreateTournamentActivityLog({
-        tournament_id: tournament.id,
-        content: `${current.name} set status to PENDING`,
-        logType: "QUALIFYING_RESET",
-      });
-    } else if (status === "not_qualified") {
-      await handleNotQualified(participantID);
-      await CreateTournamentActivityLog({
-        tournament_id: tournament.id,
-        content: `${current.name} set status to NOT_QUALIFIED`,
-        logType: "NOT_QUALIFIED",
-      });
+      if (status === "pending") {
+        await handlePending(participantID);
+        await CreateTournamentActivityLog({
+          tournament_id: tournament.id,
+          content: `${current.name} set status to PENDING`,
+          logType: "QUALIFYING_RESET",
+        });
+      } else if (status === "not_qualified") {
+        await handleNotQualified(participantID);
+        await CreateTournamentActivityLog({
+          tournament_id: tournament.id,
+          content: `${current.name} set status to NOT_QUALIFIED`,
+          logType: "NOT_QUALIFIED",
+        });
+      }
+
+      const req: QualifierMutationReq = {
+        qualifierId: id,
+        status,
+      };
+
+      if (resetStatuses.includes(status)) {
+        req.score = 0;
+      }
+
+      await updateQualifierMutation.mutateAsync(req);
+    } catch (error) {
+      console.error("Failed to update qualifier status:", error);
     }
-
-    let req: QualifierMutationReq = {
-      qualifierId: id,
-      status,
-    };
-
-    if (resetStatuses.includes(status)) {
-      req.score = 0;
-    }
-
-    updateQualifierMutation.mutate(req);
   }
 
   async function handleNotQualified(participantID: string) {
@@ -281,21 +285,17 @@
 
     const finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
 
-    const hasPendingScores = finalOrdered
-      .flatMap((entrant) => entrant.scores)
-      .some((score) => score.status === "pending");
-
     return {
       entrants: finalOrdered,
-      hasPendingScores,
     };
   });
 
   const front = $derived(orderedEntrants.entrants[0]?.participantId);
 
-  const concluding = $derived.by(() => {
-    return !orderedEntrants.hasPendingScores;
-  });
+  const concluding = $derived(
+    orderedEntrants.entrants.length > 0 &&
+      orderedEntrants.entrants.every((entrant) => entrant.status !== "pending"),
+  );
 
   $effect(() => {
     hidePanel = concluding;

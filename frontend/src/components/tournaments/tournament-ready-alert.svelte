@@ -6,7 +6,10 @@
   import * as Alert from "$src/components/ui/alert/index.js";
   import * as AlertDialog from "$src/components/ui/alert-dialog/index.js";
   import { Button } from "$src/components/ui/button/index.js";
-  import { StartTournament } from "$wails/go/main/App";
+  import {
+    InitializeQualifyingScores,
+    StartTournament,
+  } from "$wails/go/main/App";
   import type { entrant, tournament } from "$wails/go/models";
 
   type Props = {
@@ -29,7 +32,10 @@
   let confirmOpen = $state(false);
 
   const startTournamentMutation = createMutation(() => ({
-    mutationFn: async () => StartTournament(tournament.id),
+    mutationFn: async () => {
+      await InitializeQualifyingScores(tournament.id);
+      await StartTournament(tournament.id);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],

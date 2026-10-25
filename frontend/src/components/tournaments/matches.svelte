@@ -291,7 +291,10 @@
       </EmptyHeader>
     </Empty>
   {:else}
-    <TabsList class="overflow-x justify-start gap-1 overscroll-x-contain">
+    <TabsList
+      variant="line"
+      class="overflow-x justify-start gap-1 overscroll-x-contain"
+    >
       {#each sortedMatches as round, i}
         {@const roundNumber = round[0]?.match[0]?.round ?? 0}
 
@@ -511,6 +514,7 @@
     </TabsContent>
   {/each}
 </Tabs>
+
 {#if progress >= 100 && !finalized}
   <div class="w-full pt-4">
     <AlertDialog bind:open={finalizeDialogOpen}>

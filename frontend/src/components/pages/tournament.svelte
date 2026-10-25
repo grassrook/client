@@ -72,7 +72,7 @@
 </script>
 
 {#if mounted}
-  <div class="space-y-6 pb-4" in:fade={{ duration: 300 }}>
+  <div class="space-y-6" in:fade={{ duration: 300 }}>
     <div
       class="sticky top-0 z-50 mx-auto w-full bg-background backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
@@ -102,11 +102,11 @@
       {@const tournament = tournamentQuery.data}
       {@const isQualifying = tournament.status === "qualifying"}
 
-      <div class="space-y-4 relative">
+      <div class="space-y-4 pb-4 relative">
         <aside
-          class="fixed inset-y-0 right-0 z-0 hidden w-80 overflow-y-auto lg:block border-l bg-sidebar/10"
+          class="fixed -inset-y-4 right-0 z-0 hidden w-80 overflow-y-auto lg:block border-l bg-sidebar/10"
         >
-          <div class="mt-28 min-h-[calc(100vh-9rem)]">
+          <div class="mt-30 min-h-[calc(100vh-9rem)]">
             <ActivityLogs logs={logsQuery.data ?? []} />
           </div>
         </aside>

@@ -1,23 +1,43 @@
 <script lang="ts">
-  import { SvelteMap } from "svelte/reactivity";
+  import { SvelteMap, SvelteSet } from "svelte/reactivity";
 
   import type { tournamentactivitylog } from "$wails/go/models";
+
+  import Separator from "./ui/separator/separator.svelte";
 
   let { logs = [] }: { logs: tournamentactivitylog.TournamentActivityLog[] } =
     $props();
 
-  let activeFilter = $state("ALL");
+  // the log types the user has toggled on; empty means "show everything"
+  const selectedFilters = new SvelteSet<string>();
 
-  const filterOptions = $derived([
-    "ALL",
-    ...new Set(logs.map((log) => log.logType)),
-  ]);
+  const typeOptions = $derived([...new Set(logs.map((log) => log.logType))]);
+
+  // ignore selections for types that no longer exist in the current logs
+  const activeFilters = $derived(
+    typeOptions.filter((type) => selectedFilters.has(type)),
+  );
 
   const filteredLogs = $derived(
     logs
-      .filter((log) => activeFilter === "ALL" || log.logType === activeFilter)
+      .filter(
+        (log) =>
+          activeFilters.length === 0 || activeFilters.includes(log.logType),
+      )
       .toSorted((a, b) => b.createdAt - a.createdAt),
   );
+
+  function toggleFilter(type: string) {
+    if (selectedFilters.has(type)) {
+      selectedFilters.delete(type);
+    } else {
+      selectedFilters.add(type);
+    }
+  }
+
+  function clearFilters() {
+    selectedFilters.clear();
+  }
 
   const groupedLogs = $derived.by(() => {
     const groups = new SvelteMap<
@@ -68,82 +88,103 @@
   }
 </script>
 
-<div class="p-4">
-  <section class="w-full space-y-4">
-    <div class="flex items-center justify-between">
-      <div>
-        <h2 class="text-base font-semibold">Activity log</h2>
-        <p class="text-xs text-muted-foreground">Recent tournament activity</p>
-      </div>
-
-      <span class="text-xs tabular-nums text-muted-foreground">
-        {filteredLogs.length} events
-      </span>
+<section class="w-full space-y-4">
+  <div class="flex items-center justify-between px-4 pt-4">
+    <div>
+      <h2 class="text-base font-semibold">Activity log</h2>
+      <p class="text-xs text-muted-foreground">Recent tournament activity</p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-1 border-b pb-2">
-      {#each filterOptions as filter (filter)}
-        <button
-          type="button"
-          aria-pressed={activeFilter === filter}
-          class="rounded-md px-2 py-1 text-xs transition-colors
-            {activeFilter === filter
-            ? 'bg-muted font-medium text-foreground'
-            : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}"
-          onclick={() => (activeFilter = filter)}
-        >
-          {filter === "ALL" ? "All" : formatType(filter)}
-        </button>
+    <span class="text-xs tabular-nums text-muted-foreground">
+      {filteredLogs.length} events
+    </span>
+  </div>
+
+  <div
+    class="flex flex-wrap items-center gap-1 px-4"
+    role="group"
+    aria-label="Filter by activity type"
+  >
+    <!-- "All" clears the selection -->
+    <button
+      type="button"
+      aria-pressed={activeFilters.length === 0}
+      class="rounded-md px-2 py-1 text-xs transition-colors
+          {activeFilters.length === 0
+        ? 'bg-muted font-medium text-foreground'
+        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}"
+      onclick={clearFilters}
+    >
+      All
+    </button>
+
+    {#each typeOptions as type (type)}
+      {@const selected = selectedFilters.has(type)}
+      <button
+        type="button"
+        aria-pressed={selected}
+        class="rounded-md px-2 py-1 text-xs transition-colors
+            {selected
+          ? 'bg-muted font-medium text-foreground'
+          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}"
+        onclick={() => toggleFilter(type)}
+      >
+        {formatType(type)}
+      </button>
+    {/each}
+  </div>
+
+  <Separator />
+
+  {#if groupedLogs.length === 0}
+    <p class="px-4 py-6 text-center text-sm text-muted-foreground">
+      No activity found.
+    </p>
+  {:else}
+    <div
+      class="max-h-[40vh] space-y-5 overflow-y-auto overscroll-contain px-4 pb-4"
+    >
+      {#each groupedLogs as group (group.key)}
+        <div class="space-y-1">
+          <h3 class="pb-1 text-xs font-medium text-muted-foreground">
+            {group.label}
+          </h3>
+
+          <div class="relative">
+            {#each group.logs as log, i (log.id)}
+              <div class="relative flex gap-3 py-2">
+                <div class="relative flex w-2 shrink-0 justify-center">
+                  {#if i < group.logs.length - 1}
+                    <span class="absolute bottom-[-24px] top-2 w-px bg-border"
+                    ></span>
+                  {/if}
+
+                  <span
+                    class="relative mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
+                  ></span>
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <p class="break-words text-sm leading-5">
+                    {log.content}
+                  </p>
+
+                  <p class="mt-0.5 text-xs text-muted-foreground">
+                    {formatType(log.logType)}
+                    <span class="px-1">·</span>
+                    <time
+                      datetime={new Date(log.createdAt * 1000).toISOString()}
+                    >
+                      {formatTime(log.createdAt)}
+                    </time>
+                  </p>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
       {/each}
     </div>
-
-    {#if groupedLogs.length === 0}
-      <p class="py-6 text-center text-sm text-muted-foreground">
-        No activity found.
-      </p>
-    {:else}
-      <div class="space-y-5">
-        {#each groupedLogs as group (group.key)}
-          <div class="space-y-1">
-            <h3 class="pb-1 text-xs font-medium text-muted-foreground">
-              {group.label}
-            </h3>
-
-            <div class="relative">
-              {#each group.logs as log, i (log.id)}
-                <div class="relative flex gap-3 py-2">
-                  <div class="relative flex w-2 shrink-0 justify-center">
-                    {#if i < group.logs.length - 1}
-                      <span class="absolute bottom-[-8px] top-2 w-px bg-border"
-                      ></span>
-                    {/if}
-
-                    <span
-                      class="relative mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
-                    ></span>
-                  </div>
-
-                  <div class="min-w-0 flex-1">
-                    <p class="break-words text-sm leading-5">
-                      {log.content}
-                    </p>
-
-                    <p class="mt-0.5 text-xs text-muted-foreground">
-                      {formatType(log.logType)}
-                      <span class="px-1">·</span>
-                      <time
-                        datetime={new Date(log.createdAt * 1000).toISOString()}
-                      >
-                        {formatTime(log.createdAt)}
-                      </time>
-                    </p>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/each}
-      </div>
-    {/if}
-  </section>
-</div>
+  {/if}
+</section>
+<Separator />

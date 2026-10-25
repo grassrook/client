@@ -100,7 +100,9 @@
     </DialogHeader>
 
     <DialogFooter>
-      <Button variant="outline">Cancel</Button>
+      <Button variant="outline" onclick={() => (deleteDialogOpen = false)}
+        >Cancel</Button
+      >
       <Button
         disabled={deleteTournamentMutation.isPending}
         onclick={onDeleteTournament}

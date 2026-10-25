@@ -57,7 +57,7 @@
 
     {#each category.tags as tag, index (index)}
       <div
-        class={`grid gap-3 py-3 md:items-center md:gap-4 md:py-2 ${
+        class={`grid gap-3 py-3 items-center md:gap-4 md:py-2 ${
           isQualifying
             ? "md:grid-cols-[minmax(0,1fr)_10rem]"
             : "md:grid-cols-[minmax(0,1fr)_10rem_10rem]"
@@ -116,7 +116,7 @@
 
         {#if !isQualifying}
           <!-- Chase -->
-          <div class="flex flex-col gap-2 mt-2">
+          <div class="flex flex-col gap-2 mt-2 md:mt-0">
             <span
               class="text-xs font-medium tracking-wide text-muted-foreground uppercase md:hidden"
               >Chase</span

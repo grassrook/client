@@ -426,6 +426,7 @@
                 <ButtonGroup.Root
                   orientation="horizontal"
                   class="flex justify-end w-full px-4 pt-2"
+                  onclick={(event) => event.stopPropagation()}
                 >
                   <AlertDialog bind:open={omtDialogOpen}>
                     <AlertDialogTrigger>

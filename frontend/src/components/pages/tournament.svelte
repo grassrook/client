@@ -1,5 +1,4 @@
 <script lang="ts">
-  // TOOD (important): LOADING STATE FOR tournament, matches, activeBattles, entrants
   import { LucideArrowLeft } from "@lucide/svelte";
   import { createQuery } from "@tanstack/svelte-query";
   import { onMount } from "svelte";
@@ -24,7 +23,6 @@
   import StageCard from "../judging/stage-card.svelte";
   import Matches from "../tournaments/matches.svelte";
   import Progress from "../ui/progress/progress.svelte";
-  import Separator from "../ui/separator/separator.svelte";
 
   let { params = {} } = $props();
   const tournamentID = $derived(params.id);
@@ -59,10 +57,12 @@
 
   const logsQuery = createQuery(() => ({
     queryKey: ["logs", tournamentID],
+    enabled: !!tournamentID,
     queryFn: () => GetTournamentActivityLogs(tournamentID),
   }));
 
   let mounted = $state(false);
+
   onMount(() => {
     mounted = true;
   });
@@ -72,79 +72,80 @@
 
 {#if mounted}
   <div in:fade={{ duration: 300 }}>
-    <header
-      class="flex max-w-6xl mx-auto flex-col gap-5 pb-6 sm:flex-row sm:items-end sm:justify-between px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+    <div
+      class="sticky top-0 z-50 mx-auto w-full bg-background backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
-      <div class="space-y-2">
-        <a
-          use:link
-          href="/"
-          class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <LucideArrowLeft class="size-4" />
-          Back to tournament list
-        </a>
-        <h1 class="text-3xl font-semibold tracking-tight">
-          {tournamentQuery.data?.name ?? "Loading..."}
-        </h1>
-      </div>
-    </header>
+      <header
+        class="flex flex-col gap-5 px-4 pb-6 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 py-4"
+      >
+        <div class="space-y-2">
+          <a
+            use:link
+            href="/"
+            class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <LucideArrowLeft class="size-4" />
+            Back to tournament list
+          </a>
 
-    <Progress class="rounded-none" value={tournamentQuery.data?.progress} />
+          <h1 class="text-3xl font-semibold tracking-tight">
+            {tournamentQuery.data?.name ?? "Loading..."}
+          </h1>
+        </div>
+      </header>
 
-    <Separator />
+      <Progress class="rounded-none" value={tournamentQuery.data?.progress} />
+    </div>
+
     {#if tournamentQuery.data}
       {@const tournament = tournamentQuery.data}
       {@const isQualifying = tournament.status === "qualifying"}
-      <div
-        class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
-      >
-        <div
-          class="mx-auto grid max-w-6xl grid-cols-1 items-start lg:grid-cols-3 lg:gap-4"
+
+      <div class="relative">
+        <aside
+          class="fixed inset-y-0 right-0 z-0 hidden w-80 overflow-y-auto lg:block border-l bg-sidebar/10"
         >
-          <div class="min-w-0 lg:sticky lg:top-4 lg:col-span-1 lg:self-start">
+          <div class="mt-33.5 min-h-[calc(100vh-9rem)]">
             <ActivityLogs logs={logsQuery.data ?? []} />
           </div>
-
-          <div class="min-w-0 lg:col-span-2">
-            <StageCard>
-              {#if isQualifying}
-                <EntrantList
-                  tournament={tournamentQuery.data ?? {}}
-                  entrants={entrantsQuery.data ?? []}
-                  bind:hidePanel
-                />
-              {:else}
-                <Matches
-                  {tournamentID}
-                  {stage}
-                  matches={matchesQuery.data ?? []}
-                  activeBattles={activeBattles.data ?? []}
-                  {judgement}
-                  progress={tournamentQuery.data.progress ?? 0}
-                  finalized={tournamentQuery.data.finalized ?? false}
-                />
-              {/if}
-            </StageCard>
-
-            {#if !hidePanel}
-              <Panel
-                {stage}
-                {judgement}
-                tournament={tournamentQuery.data ?? {}}
-                {isQualifying}
-              >
+        </aside>
+        <div class="mr-0 lg:mr-80">
+          <div class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:py-8">
+            <div class="min-w-0">
+              <StageCard>
                 {#if isQualifying}
-                  <QualifyingHandler
+                  <EntrantList
                     {tournament}
-                    {judgement}
                     entrants={entrantsQuery.data ?? []}
+                    bind:hidePanel
                   />
                 {:else}
-                  <BattleHandler {tournamentID} {judgement} {stage} />
+                  <Matches
+                    {tournamentID}
+                    {stage}
+                    matches={matchesQuery.data ?? []}
+                    activeBattles={activeBattles.data ?? []}
+                    {judgement}
+                    progress={tournament.progress ?? 0}
+                    finalized={tournament.finalized ?? false}
+                  />
                 {/if}
-              </Panel>
-            {/if}
+              </StageCard>
+
+              {#if !hidePanel}
+                <Panel {stage} {judgement} {tournament} {isQualifying}>
+                  {#if isQualifying}
+                    <QualifyingHandler
+                      {tournament}
+                      {judgement}
+                      entrants={entrantsQuery.data ?? []}
+                    />
+                  {:else}
+                    <BattleHandler {tournamentID} {judgement} {stage} />
+                  {/if}
+                </Panel>
+              {/if}
+            </div>
           </div>
         </div>
       </div>

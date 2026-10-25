@@ -172,6 +172,21 @@ func (a *App) GetParticipants(tournamentID string) ([]participant.Participant, e
 	return participants, err
 }
 
+func (a *App) StartTournament(tournamentID string) error {
+	err := a.tournamentRepo.StartTournament(a.ctx, tournamentID)
+	if err != nil {
+		return nil
+	}
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentID,
+		Content:      "The tournament started",
+		LogType:      tournamentactivitylog.TOURNAMENT_START,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+}
+
 func (a *App) DeleteParticipant(tournamentID, participantID string) error {
 	return a.tournamentRepo.DeleteParticipant(a.ctx, tournamentID, participantID)
 }

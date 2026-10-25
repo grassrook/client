@@ -110,6 +110,10 @@ export function SetChallongeAPIKey(arg1) {
   return window['go']['main']['App']['SetChallongeAPIKey'](arg1);
 }
 
+export function StartTournament(arg1) {
+  return window['go']['main']['App']['StartTournament'](arg1);
+}
+
 export function SyncTournament(arg1) {
   return window['go']['main']['App']['SyncTournament'](arg1);
 }

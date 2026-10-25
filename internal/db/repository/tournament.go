@@ -8,6 +8,7 @@ import (
 	"judginginternal/internal/challonge"
 	"judginginternal/internal/models/participant"
 	"judginginternal/internal/models/tournament"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -41,6 +42,8 @@ type TournamentRepository interface {
 	// GetParticipants returns all participants registered to the given tournament,
 	// ordered by registration time. It returns an empty slice if there are none.
 	GetParticipants(ctx context.Context, tournamentID string) ([]participant.Participant, error)
+
+	StartTournament(ctx context.Context, tournamentID string) error
 
 	DeleteParticipant(ctx context.Context, tournamentID, participantID string) error
 	GetTournaments() (tournaments []tournament.Tournament, err error)
@@ -348,6 +351,70 @@ ORDER BY created_at ASC, rowid ASC
 	}
 
 	return participants, nil
+}
+
+func (r *SQLiteTournamentRepository) StartTournament(
+	ctx context.Context,
+	tournamentID string,
+) error {
+	tournamentID = strings.TrimSpace(tournamentID)
+	if tournamentID == "" {
+		return fmt.Errorf("tournament id is required")
+	}
+
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var (
+		status          string
+		randomize       bool
+		qualifyingOrder string
+	)
+
+	err = tx.QueryRowContext(ctx, `
+SELECT status, randomize_qualifying_order, qualifying_order
+FROM tournaments
+WHERE id = ?
+`, tournamentID).Scan(&status, &randomize, &qualifyingOrder)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("tournament %s not found", tournamentID)
+		}
+		return err
+	}
+
+	if status != "pending" {
+		return fmt.Errorf("tournament has already started (status: %s)", status)
+	}
+
+	// randomize qualifying order if enabled
+	if randomize {
+		ids := make([]string, 0)
+		for _, id := range strings.Split(qualifyingOrder, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				ids = append(ids, id)
+			}
+		}
+
+		rand.Shuffle(len(ids), func(i, j int) {
+			ids[i], ids[j] = ids[j], ids[i]
+		})
+
+		qualifyingOrder = strings.Join(ids, ", ")
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE tournaments
+SET status = ?, qualifying_order = ?, updated_at = ?
+WHERE id = ?
+`, "qualifying", qualifyingOrder, time.Now().Unix(), tournamentID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *SQLiteTournamentRepository) DeleteParticipant(

@@ -4,6 +4,7 @@ type LogKind = string
 
 const (
 	TOURNAMENT_INIT     LogKind = "TOURNAMENT_INIT"
+	TOURNAMENT_START    LogKind = "TOURNAMENT_START"
 	QUALIFYING_FINISHED LogKind = "QUALIFYING_FINISHED"
 	WON_BATTLE          LogKind = "WON_BATTLE"
 	OMT                 LogKind = "OMT"

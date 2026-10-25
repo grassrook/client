@@ -204,119 +204,121 @@
 
 <div class="mr-0 lg:mr-80">
   <div class="mx-auto max-w-6xl space-y-1 px-4 pb-2 sm:px-6 lg:pb-2">
-    <div class="flex items-end justify-between mb-4">
-      <div>
-        <h2 class="text-lg font-semibold">Participants</h2>
-        <p class="text-sm text-muted-foreground">
-          {items.length}
-          {items.length === 1 ? "participant" : "participants"} registered.
-          {#if editable}
-            {#if randomized}
-              The qualifying order will be randomized once the tournament
-              starts.
-            {:else}
-              Drag rows to change the qualifying order.
+    <div class="border border-border/70 rounded-xl p-4">
+      <div class="flex items-end justify-between mb-4">
+        <div>
+          <h3 class="font-semibold">Participants</h3>
+          <p class="text-sm text-muted-foreground">
+            {items.length}
+            {items.length === 1 ? "participant" : "participants"} registered.
+            {#if editable}
+              {#if randomized}
+                The qualifying order will be randomized once the tournament
+                starts.
+              {:else}
+                Drag rows to change the qualifying order.
+              {/if}
             {/if}
-          {/if}
-        </p>
-      </div>
-      {#if editable}
-        <Button onclick={() => (createOpen = true)}>
-          <PlusIcon class="mr-2 size-4" />
-          Add participants
-        </Button>
-      {/if}
-    </div>
-
-    {#if items.length === 0}
-      <div
-        class="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center"
-      >
-        <div
-          class="mb-4 flex size-12 items-center justify-center rounded-full bg-muted"
-        >
-          <UsersIcon class="size-6 text-muted-foreground" />
-        </div>
-        <h3 class="text-base font-semibold">No participants yet</h3>
-        {#if editable}
-          <p class="mt-1 max-w-sm text-sm text-muted-foreground">
-            Add the people taking part in this tournament. You can paste several
-            names at once, one per line.
           </p>
-          <Button class="mt-6" onclick={() => (createOpen = true)}>
+        </div>
+        {#if editable}
+          <Button onclick={() => (createOpen = true)}>
             <PlusIcon class="mr-2 size-4" />
             Add participants
           </Button>
-        {:else}
-          <p class="mt-1 max-w-sm text-sm text-muted-foreground">
-            This tournament has already started, so participants can no longer
-            be added.
-          </p>
         {/if}
       </div>
-    {:else}
-      <div class="rounded-lg border">
-        <Table.Root>
-          <Table.Header>
-            <Table.Row>
-              {#if canReorder}
-                <Table.Head class="w-10"></Table.Head>
-              {/if}
-              <Table.Head class="w-16">#</Table.Head>
-              <Table.Head>Name</Table.Head>
-              {#if editable}
-                <Table.Head class="w-16 text-right">Actions</Table.Head>
-              {/if}
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {#each items as entrant, index (entrant.id)}
-              <Table.Row
-                draggable={canReorder}
-                ondragstart={(e) => handleDragStart(e, index)}
-                ondragover={(e) => handleDragOver(e, index)}
-                ondrop={(e) => handleDrop(e, index)}
-                ondragend={resetDrag}
-                class={[
-                  "transition-colors",
-                  dragIndex === index && "opacity-40",
-                  overIndex === index &&
-                    dragIndex !== null &&
-                    dragIndex !== index &&
-                    (dragIndex < index
-                      ? "border-b-2 border-b-primary"
-                      : "border-t-2 border-t-primary"),
-                ]}
-              >
+
+      {#if items.length === 0}
+        <div
+          class="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center"
+        >
+          <div
+            class="mb-4 flex size-12 items-center justify-center rounded-full bg-muted"
+          >
+            <UsersIcon class="size-6 text-muted-foreground" />
+          </div>
+          <h3 class="text-base font-semibold">No participants yet</h3>
+          {#if editable}
+            <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+              Add the people taking part in this tournament. You can paste
+              several names at once, one per line.
+            </p>
+            <Button class="mt-6" onclick={() => (createOpen = true)}>
+              <PlusIcon class="mr-2 size-4" />
+              Add participants
+            </Button>
+          {:else}
+            <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+              This tournament has already started, so participants can no longer
+              be added.
+            </p>
+          {/if}
+        </div>
+      {:else}
+        <div class="rounded-lg border">
+          <Table.Root>
+            <Table.Header>
+              <Table.Row>
                 {#if canReorder}
-                  <Table.Cell
-                    class="cursor-grab text-muted-foreground active:cursor-grabbing"
-                  >
-                    <GripVerticalIcon class="size-4" />
-                  </Table.Cell>
+                  <Table.Head class="w-10"></Table.Head>
                 {/if}
-                <Table.Cell class="text-muted-foreground"
-                  >{index + 1}</Table.Cell
-                >
-                <Table.Cell class="font-medium">{entrant.name}</Table.Cell>
+                <Table.Head class="w-16">#</Table.Head>
+                <Table.Head>Name</Table.Head>
                 {#if editable}
-                  <Table.Cell class="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${entrant.name}`}
-                      onclick={() => (deleteTarget = entrant)}
-                    >
-                      <Trash2Icon class="size-4 text-destructive" />
-                    </Button>
-                  </Table.Cell>
+                  <Table.Head class="w-16 text-right">Actions</Table.Head>
                 {/if}
               </Table.Row>
-            {/each}
-          </Table.Body>
-        </Table.Root>
-      </div>
-    {/if}
+            </Table.Header>
+            <Table.Body>
+              {#each items as entrant, index (entrant.id)}
+                <Table.Row
+                  draggable={canReorder}
+                  ondragstart={(e) => handleDragStart(e, index)}
+                  ondragover={(e) => handleDragOver(e, index)}
+                  ondrop={(e) => handleDrop(e, index)}
+                  ondragend={resetDrag}
+                  class={[
+                    "transition-colors",
+                    dragIndex === index && "opacity-40",
+                    overIndex === index &&
+                      dragIndex !== null &&
+                      dragIndex !== index &&
+                      (dragIndex < index
+                        ? "border-b-2 border-b-primary"
+                        : "border-t-2 border-t-primary"),
+                  ]}
+                >
+                  {#if canReorder}
+                    <Table.Cell
+                      class="cursor-grab text-muted-foreground active:cursor-grabbing"
+                    >
+                      <GripVerticalIcon class="size-4" />
+                    </Table.Cell>
+                  {/if}
+                  <Table.Cell class="text-muted-foreground"
+                    >{index + 1}</Table.Cell
+                  >
+                  <Table.Cell class="font-medium">{entrant.name}</Table.Cell>
+                  {#if editable}
+                    <Table.Cell class="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${entrant.name}`}
+                        onclick={() => (deleteTarget = entrant)}
+                      >
+                        <Trash2Icon class="size-4 text-destructive" />
+                      </Button>
+                    </Table.Cell>
+                  {/if}
+                </Table.Row>
+              {/each}
+            </Table.Body>
+          </Table.Root>
+        </div>
+      {/if}
+    </div>
   </div>
 </div>
 

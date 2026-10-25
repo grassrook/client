@@ -61,6 +61,8 @@ export function ResetBattle(arg1:string,arg2:string):Promise<void>;
 
 export function SetChallongeAPIKey(arg1:string):Promise<void>;
 
+export function StartTournament(arg1:string):Promise<void>;
+
 export function SyncTournament(arg1:string):Promise<void>;
 
 export function UpdateCriteriaConfig(arg1:number,arg2:repository.CriteriaConfig):Promise<void>;

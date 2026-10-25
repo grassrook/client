@@ -5,6 +5,7 @@ import {tournament} from '../models';
 import {tournamentactivitylog} from '../models';
 import {qualifyingscore} from '../models';
 import {entrant} from '../models';
+import {participant} from '../models';
 
 export function ChangeLeader(arg1:string,arg2:string):Promise<void>;
 
@@ -16,11 +17,13 @@ export function CopyCriteriaConfigById(arg1:number):Promise<void>;
 
 export function CreateCriteriaConfig(arg1:repository.CriteriaConfig):Promise<void>;
 
-export function CreateTournament(arg1:repository.CreateTournamentRequest):Promise<tournament.Tournament>;
+export function CreateTournament(arg1:tournament.CreateRequest):Promise<tournament.Tournament>;
 
 export function CreateTournamentActivityLog(arg1:tournamentactivitylog.CreateTournamentActivityLogInput):Promise<void>;
 
 export function DeleteCriteriaConfig(arg1:number):Promise<void>;
+
+export function DeleteParticipant(arg1:string,arg2:string):Promise<void>;
 
 export function DeleteTournament(arg1:string,arg2:string):Promise<void>;
 
@@ -40,6 +43,8 @@ export function GetMatches(arg1:string):Promise<Array<any>>;
 
 export function GetNote(arg1:string):Promise<string>;
 
+export function GetParticipants(arg1:string):Promise<Array<participant.Participant>>;
+
 export function GetTournament(arg1:string):Promise<tournament.Tournament>;
 
 export function GetTournamentActivityLogs(arg1:string):Promise<Array<tournamentactivitylog.TournamentActivityLog>>;
@@ -49,6 +54,8 @@ export function GetTournaments():Promise<Array<tournament.Tournament>>;
 export function HasChallongeAPIKey():Promise<boolean>;
 
 export function InitializeQualifyingScores(arg1:string):Promise<void>;
+
+export function InsertBulkParticipant(arg1:string,arg2:Array<string>):Promise<Array<string>>;
 
 export function ResetBattle(arg1:string,arg2:string):Promise<void>;
 

@@ -27,7 +27,6 @@
   import * as Popover from "$src/components/ui/popover";
   import * as Select from "$src/components/ui/select";
   import Switch from "$src/components/ui/switch/switch.svelte";
-  import { Textarea } from "$src/components/ui/textarea";
   import {
     CreateTournament,
     GetCriteriaConfigs,
@@ -39,7 +38,7 @@
   let name = $state("");
   let size = $state(2);
   let trackName = $state("");
-  let entrantNames = $state("");
+
   let randomizeQualifyingOrder = $state(true);
   let criteriaConfigID = $state<number | undefined>(undefined);
   let datePopoverOpen = $state(false);
@@ -61,7 +60,6 @@
       size,
       startingDate,
       track,
-      entrants,
       randomizeQualifyingOrder,
       criteriaConfigID,
     }: {
@@ -69,7 +67,6 @@
       size: number;
       startingDate: string;
       track: string;
-      entrants: string[];
       randomizeQualifyingOrder: boolean;
       criteriaConfigID: number;
     }) => {
@@ -78,9 +75,7 @@
         size,
         startingDate,
         track,
-        entrants,
         randomizeQualifyingOrder,
-        qualifyingOrder: [],
         criteriaConfigID,
         qualifyingRounds: Number(qualifyingRounds),
       });
@@ -95,7 +90,6 @@
       selectedDate = undefined;
       startingTime = "12:00";
       trackName = "";
-      entrantNames = "";
       error = "";
       criteriaConfigID = undefined;
       qualifyingRounds = "1";
@@ -131,20 +125,11 @@
       return;
     }
 
-    const entrants = entrantNames
-      .split("\n")
-      .map((name) => name.trim())
-      .filter(Boolean);
-    if (entrants.length === 0) {
-      error = "At least one qualifier is required.";
-      return;
-    }
     await createTournamentMutation.mutateAsync({
       name: name.trim(),
       size,
       startingDate,
       track: trackName.trim(),
-      entrants,
       randomizeQualifyingOrder,
       criteriaConfigID,
     });
@@ -271,25 +256,6 @@
         </Select.Root>
       </div>
       <div class="space-y-2">
-        <Label for="Entrants">Entrants</Label>
-        <Textarea
-          id="Entrants"
-          // eslint-disable-next-line svelte/no-useless-mustaches
-          placeholder={"One participant per line \nJohn Doe\nJane Doe\nAlex Smith"}
-          rows={8}
-          bind:value={entrantNames}
-        />
-        <p class="text-sm text-muted-foreground">
-          Enter one participant name per line.
-        </p>
-      </div>
-      <div
-        class="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2.5"
-      >
-        <Label>Randomize Qualifying Order</Label>
-        <Switch bind:checked={randomizeQualifyingOrder} />
-      </div>
-      <div class="space-y-2">
         <Label for="criteria-config">Criteria configuration</Label>
 
         <Select.Root
@@ -327,6 +293,11 @@
             tournament.
           </p>
         {/if}
+      </div>
+
+      <div class="flex items-center justify-between gap-4 py-2.5">
+        <Label>Randomize Qualifying Order</Label>
+        <Switch bind:checked={randomizeQualifyingOrder} />
       </div>
       {#if error}
         <p class="text-sm text-destructive">

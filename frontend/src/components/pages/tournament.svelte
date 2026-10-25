@@ -22,6 +22,7 @@
   import QualifyingHandler from "../judging/qualifying-handler.svelte";
   import StageCard from "../judging/stage-card.svelte";
   import Matches from "../tournaments/matches.svelte";
+  import RegisteredParticipants from "../tournaments/registered-participants.svelte";
   import Progress from "../ui/progress/progress.svelte";
 
   let { params = {} } = $props();
@@ -105,49 +106,57 @@
         <aside
           class="fixed inset-y-0 right-0 z-0 hidden w-80 overflow-y-auto lg:block border-l bg-sidebar/10"
         >
-          <div class="mt-33.5 min-h-[calc(100vh-9rem)]">
+          <div class="mt-28 min-h-[calc(100vh-9rem)]">
             <ActivityLogs logs={logsQuery.data ?? []} />
           </div>
         </aside>
-        <div class="mr-0 lg:mr-80">
-          <div class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:py-8">
-            <div class="min-w-0">
-              <StageCard>
-                {#if isQualifying}
-                  <EntrantList
-                    {tournament}
-                    entrants={entrantsQuery.data ?? []}
-                    bind:hidePanel
-                  />
-                {:else}
-                  <Matches
-                    {tournamentID}
-                    {stage}
-                    matches={matchesQuery.data ?? []}
-                    activeBattles={activeBattles.data ?? []}
-                    {judgement}
-                    progress={tournament.progress ?? 0}
-                    finalized={tournament.finalized ?? false}
-                  />
-                {/if}
-              </StageCard>
 
-              {#if !hidePanel}
-                <Panel {stage} {judgement} {tournament} {isQualifying}>
+        <RegisteredParticipants
+          {tournament}
+          entrants={entrantsQuery.data ?? []}
+        />
+
+        {#if tournament.status === "qualifying" || tournament.status === "elimination"}
+          <div class="mr-0 lg:mr-80">
+            <div class="mx-auto max-w-6xl space-y-1 px-4 py-6 sm:px-6 lg:py-8">
+              <div class="min-w-0">
+                <StageCard>
                   {#if isQualifying}
-                    <QualifyingHandler
+                    <EntrantList
                       {tournament}
-                      {judgement}
                       entrants={entrantsQuery.data ?? []}
+                      bind:hidePanel
                     />
                   {:else}
-                    <BattleHandler {tournamentID} {judgement} {stage} />
+                    <Matches
+                      {tournamentID}
+                      {stage}
+                      matches={matchesQuery.data ?? []}
+                      activeBattles={activeBattles.data ?? []}
+                      {judgement}
+                      progress={tournament.progress ?? 0}
+                      finalized={tournament.finalized ?? false}
+                    />
                   {/if}
-                </Panel>
-              {/if}
+                </StageCard>
+
+                {#if !hidePanel}
+                  <Panel {stage} {judgement} {tournament} {isQualifying}>
+                    {#if isQualifying}
+                      <QualifyingHandler
+                        {tournament}
+                        {judgement}
+                        entrants={entrantsQuery.data ?? []}
+                      />
+                    {:else}
+                      <BattleHandler {tournamentID} {judgement} {stage} />
+                    {/if}
+                  </Panel>
+                {/if}
+              </div>
             </div>
           </div>
-        </div>
+        {/if}
       </div>
     {/if}
   </div>

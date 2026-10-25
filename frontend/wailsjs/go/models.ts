@@ -25,6 +25,31 @@ export namespace entrant {
 
 }
 
+export namespace participant {
+	
+	export class Participant {
+	    id: string;
+	    name: string;
+	    tournament_id: string;
+	    created_at: number;
+	    updated_at: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Participant(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.tournament_id = source["tournament_id"];
+	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
+
+}
+
 export namespace qualifyingscore {
 	
 	export class ScoreData {
@@ -96,34 +121,6 @@ export namespace repository {
 	        this.participantId = source["participantId"];
 	        this.leadStatus = source["leadStatus"];
 	        this.rerun = source["rerun"];
-	    }
-	}
-	export class CreateTournamentRequest {
-	    name: string;
-	    size: number;
-	    startingDate: string;
-	    track: string;
-	    entrants: string[];
-	    randomizeQualifyingOrder: boolean;
-	    qualifyingOrder: string[];
-	    criteriaConfigID: number;
-	    qualifyingRounds: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new CreateTournamentRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.size = source["size"];
-	        this.startingDate = source["startingDate"];
-	        this.track = source["track"];
-	        this.entrants = source["entrants"];
-	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
-	        this.qualifyingOrder = source["qualifyingOrder"];
-	        this.criteriaConfigID = source["criteriaConfigID"];
-	        this.qualifyingRounds = source["qualifyingRounds"];
 	    }
 	}
 	export class CriteriaTag {
@@ -353,10 +350,35 @@ export namespace repository {
 
 export namespace tournament {
 	
+	export class CreateRequest {
+	    name: string;
+	    size: number;
+	    startingDate: string;
+	    track: string;
+	    criteriaConfigID: number;
+	    qualifyingRounds: number;
+	    randomizeQualifyingOrder: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.startingDate = source["startingDate"];
+	        this.track = source["track"];
+	        this.criteriaConfigID = source["criteriaConfigID"];
+	        this.qualifyingRounds = source["qualifyingRounds"];
+	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
+	    }
+	}
 	export class Tournament {
 	    id: string;
 	    name: string;
 	    starting_date: string;
+	    track_id: string;
 	    track?: string;
 	    qualifying_order: string;
 	    status: string;
@@ -366,6 +388,8 @@ export namespace tournament {
 	    criteriaConfig: string;
 	    finalized: boolean;
 	    qualifyingRounds: number;
+	    createdAt: number;
+	    updatedAt: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Tournament(source);
@@ -376,6 +400,7 @@ export namespace tournament {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.starting_date = source["starting_date"];
+	        this.track_id = source["track_id"];
 	        this.track = source["track"];
 	        this.qualifying_order = source["qualifying_order"];
 	        this.status = source["status"];
@@ -385,6 +410,8 @@ export namespace tournament {
 	        this.criteriaConfig = source["criteriaConfig"];
 	        this.finalized = source["finalized"];
 	        this.qualifyingRounds = source["qualifyingRounds"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
 	    }
 	}
 

@@ -1,12 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import Card from "../ui/card/card.svelte";
-  import CardContent from "../ui/card/card-content.svelte";
-  import CardHeader from "../ui/card/card-header.svelte";
-  import CardTitle from "../ui/card/card-title.svelte";
-  import Separator from "../ui/separator/separator.svelte";
-
   let {
     children,
   }: {
@@ -14,12 +8,8 @@
   } = $props();
 </script>
 
-<Card class="gap-0 border-border/70 shadow-none">
-  <CardHeader class="pb-4">
-    <CardTitle>Stage</CardTitle>
-  </CardHeader>
-  <Separator />
-  <CardContent class="pt-4 space-y-4">
+<div class="gap-0 border rounded-xl border-border/70 shadow-none">
+  <div class="p-4 space-y-4">
     {@render children()}
-  </CardContent>
-</Card>
+  </div>
+</div>

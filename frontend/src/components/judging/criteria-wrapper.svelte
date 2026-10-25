@@ -1,10 +1,4 @@
 <script lang="ts">
-  import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-  } from "$src/components/ui/card";
   import type { Judgement } from "$src/lib/judging.svelte";
   import type { repository } from "$wails/go/models";
 
@@ -22,15 +16,19 @@
   } = $props();
 </script>
 
-<Card class="gap-0">
-  <CardHeader class="flex-row items-baseline justify-between gap-3 pb-4">
-    <CardTitle class="min-w-0 truncate">{category.label}</CardTitle>
+<div class="gap-0 rounded-xl border border-border/70 text-card-foreground">
+  <div class="flex flex-row items-baseline justify-between gap-3 p-4">
+    <div
+      class="text-sm min-w-0 truncate font-semibold leading-none tracking-tight"
+    >
+      {category.label}
+    </div>
     <!-- <span class="shrink-0 text-xs font-medium text-muted-foreground capitalize"
       >{role}</span
     > -->
-  </CardHeader>
+  </div>
   <Separator />
-  <CardContent class="space-y-1 pt-2">
+  <div class="space-y-1 px-6 pt-2 pb-6">
     {#each category.tags as tag, index (tag.id)}
       <CriterionRow
         {tag}
@@ -39,5 +37,5 @@
         onValueChange={(value) => judgement.set(tag.id, role, value)}
       />
     {/each}
-  </CardContent>
-</Card>
+  </div>
+</div>

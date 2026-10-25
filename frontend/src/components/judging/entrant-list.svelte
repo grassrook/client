@@ -326,14 +326,14 @@
       </EmptyHeader>
     </Empty>
   {:else}
-    <div class="divide-y overflow-hidden rounded-lg border bg-card">
+    <div class="divide-y overflow-hidden rounded-lg border border-border/70">
       {#each orderedEntrants.entrants as entrant, idx (entrant.participantId)}
         <button
           type="button"
           class={[
             "flex w-full items-center justify-between gap-4 px-3 py-3.5 text-left transition-colors sm:px-4",
             front === entrant.participantId
-              ? "bg-accent text-accent-foreground"
+              ? "bg-accent/50 text-accent-foreground"
               : "hover:bg-muted/50",
           ]}
         >

@@ -316,18 +316,7 @@ func (a *App) UpdateNote(matchID, text string) error {
 }
 
 func (a *App) ResetBattle(tournamentID, matchID string) error {
-	if err := a.matchesRepo.ResetBattle(a.ctx, tournamentID, matchID); err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to reset battle: %v", err)
-		return err
-	}
-
-	log := tournamentactivitylog.CreateTournamentActivityLogInput{
-		TournamentID: tournamentID,
-		Content:      fmt.Sprintf("Match one more time #%s", matchID),
-		LogType:      tournamentactivitylog.OMT,
-	}
-
-	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+	return a.matchesRepo.ResetBattle(a.ctx, tournamentID, matchID)
 }
 
 func (a *App) ChangeLeader(tournamentID, matchID string) error {

@@ -153,9 +153,19 @@
     },
   }));
 
-  async function onHandleOMT(match: repository.Match[]) {
+  async function onHandleOMT(
+    match: repository.Match[],
+    key: string,
+    matchNumber: number,
+  ) {
     await updateNoteMutation.mutateAsync("");
     await ResetBattle(tournamentID, selectedMatchId!);
+
+    await CreateTournamentActivityLog({
+      tournament_id: tournamentID,
+      content: `${key} Match #${matchNumber} OMT`,
+      logType: "OMT",
+    });
 
     await queryClient.invalidateQueries({
       queryKey: ["note", tournamentID, stage.matchId],
@@ -203,11 +213,15 @@
   let omtDialogOpen = $state(false);
   let concludeDialogOpen = $state(false);
 
-  async function handleOMT(match: repository.Match[]) {
+  async function handleOMT(
+    match: repository.Match[],
+    key: string,
+    matchNumber: number,
+  ) {
     isProcessing = true;
 
     try {
-      await onHandleOMT(match);
+      await onHandleOMT(match, key, matchNumber);
       omtDialogOpen = false;
     } finally {
       isProcessing = false;
@@ -340,6 +354,8 @@
           {@const currentMatch = match[0]}
           {@const hasBothParticipants =
             match[0].participantId && match[1].participantId}
+          {@const roundKey = roundKeys()[i]}
+          {@const matchNumber = round.indexOf(matchData) + 1}
 
           <div
             class={`border border-border/80 rounded-lg transition-colors hover:border-primary/60 hover:bg-muted/50 ${
@@ -351,7 +367,7 @@
             <div class="border-b px-4 py-3">
               <div class="flex items-center justify-between">
                 <div class="text-sm font-semibold">
-                  Match {round.indexOf(matchData) + 1}
+                  Match {matchNumber}
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -457,7 +473,8 @@
 
                         <AlertDialogAction
                           disabled={isProcessing}
-                          onclick={() => handleOMT(match)}
+                          onclick={() =>
+                            handleOMT(match, roundKey, matchNumber)}
                         >
                           {#if isProcessing}
                             Processing...

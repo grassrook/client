@@ -201,7 +201,7 @@ func (a *App) UpdateTournamentState(id, state string) error {
 
 func (a *App) DeleteTournament(id, status string) error {
 	// only update the tournament state if tournament already been started
-	if status != "qualifying" {
+	if status == "elimination" {
 		if err := a.tournamentRepo.UpdateTournamentState(a.ctx, id, "reset"); err != nil {
 			runtime.LogError(a.ctx, err.Error())
 			return err

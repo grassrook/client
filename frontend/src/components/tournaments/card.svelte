@@ -50,14 +50,18 @@
             </h2>
             {#if !tournament.finalized}
               <Badge
-                variant={tournament.status === "qualifying"
-                  ? "secondary"
-                  : "default"}
+                variant={tournament.status === "pending"
+                  ? "destructive"
+                  : tournament.status === "qualifying"
+                    ? "secondary"
+                    : "default"}
               >
                 {#if tournament.status === "qualifying"}
                   Qualifying
                 {:else if tournament.status === "elimination"}
                   Elimination
+                {:else if tournament.status === "pending"}
+                  Need Setup
                 {/if}
               </Badge>
             {/if}

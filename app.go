@@ -8,6 +8,7 @@ import (
 	"judginginternal/internal/db"
 	"judginginternal/internal/db/repository"
 	"judginginternal/internal/models/entrant"
+	"judginginternal/internal/models/participant"
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
 	"judginginternal/internal/models/tournament"
 	tournamentactivitylog "judginginternal/internal/models/tournament_activity_log"
@@ -135,7 +136,7 @@ func (a *App) GetTournament(id string) (tournament.Tournament, error) {
 	return t, nil
 }
 
-func (a *App) CreateTournament(req repository.CreateTournamentRequest) (tournament.Tournament, error) {
+func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournament, error) {
 	t, err := a.tournamentRepo.CreateTournament(a.ctx, req)
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Failed to create tournament: %v", err)
@@ -153,6 +154,41 @@ func (a *App) CreateTournament(req repository.CreateTournamentRequest) (tourname
 	}
 
 	return *t, err
+}
+
+func (a *App) InsertBulkParticipant(tournamentID string, participants []string) ([]string, error) {
+	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, participants)
+	if err != nil {
+		return nil, err
+	}
+	return p, err
+}
+
+func (a *App) GetParticipants(tournamentID string) ([]participant.Participant, error) {
+	participants, err := a.tournamentRepo.GetParticipants(a.ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	return participants, err
+}
+
+func (a *App) StartTournament(tournamentID string) error {
+	err := a.tournamentRepo.StartTournament(a.ctx, tournamentID)
+	if err != nil {
+		return nil
+	}
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentID,
+		Content:      "The tournament started",
+		LogType:      tournamentactivitylog.TOURNAMENT_START,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+}
+
+func (a *App) DeleteParticipant(tournamentID, participantID string) error {
+	return a.tournamentRepo.DeleteParticipant(a.ctx, tournamentID, participantID)
 }
 
 func (a *App) UpdateTournament(id string, req repository.UpdateTournamentRequest) error {

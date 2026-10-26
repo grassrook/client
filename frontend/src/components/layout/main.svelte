@@ -31,7 +31,7 @@
 <div class="min-h-svh bg-muted/20 text-foreground">
   <Sidebar.Provider>
     <Sidebar.Root collapsible="icon" class="bg-sidebar">
-      <Sidebar.Header>
+      <Sidebar.Header class="p-0 pt-2">
         <div
           class="flex h-16 items-center gap-3 px-4 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
         >

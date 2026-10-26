@@ -64,7 +64,7 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 		var status string
 
 		if err := rows.Scan(&participantID, &round, &score, &status); err != nil {
-			return nil, fmt.Errorf("scan qualifying score: %w", err)
+			return nil, fmt.Errorf("FindAllScores: scan qualifying score: %w", err)
 		}
 
 		data, exists := participants[participantID]

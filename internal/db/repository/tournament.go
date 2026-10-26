@@ -6,25 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"judginginternal/internal/challonge"
+	"judginginternal/internal/models/participant"
 	"judginginternal/internal/models/tournament"
-	"math/rand/v2"
+	"math/rand"
 	"strings"
 	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
-
-type CreateTournamentRequest struct {
-	Name                     string   `json:"name"`
-	Size                     int      `json:"size"`
-	StartingDate             string   `json:"startingDate"`
-	Track                    string   `json:"track"`
-	Entrants                 []string `json:"entrants"`
-	RandomizeQualifyingOrder bool     `json:"randomizeQualifyingOrder"`
-	QualifyingOrder          []string `json:"qualifyingOrder"`
-	CriteriaConfigID         int      `json:"criteriaConfigID"`
-	QualifyingRounds         int      `json:"qualifyingRounds"`
-}
 
 type BracketMatch struct {
 	MatchID                string   `json:"matchID"`
@@ -39,12 +28,29 @@ type BracketMatch struct {
 }
 
 type TournamentRepository interface {
-	CreateTournament(context.Context, CreateTournamentRequest) (*tournament.Tournament, error)
-	GetTournaments() ([]tournament.Tournament, error)
-	GetTournamentById(string) (tournament.Tournament, error)
-	DeleteTournamentById(context.Context, string) error
-	UpdateTournament(context.Context, string, UpdateTournamentRequest) error
-	UpdateTournamentState(context.Context, string, string) error
+	// Creates tournament instance with it's configuration without having to have the
+	// tournament initially set to qualifying state
+	CreateTournament(ctx context.Context, req tournament.CreateRequest) (*tournament.Tournament, error)
+
+	// InsertBulkParticipant adds participants (and their pending entrant rows) to an
+	// existing tournament in a single transaction. The new participant IDs are
+	// pushed onto the end of the tournament's qualifying_order. It returns the IDs
+	// of the created participants, in the same order as the (trimmed, non-empty)
+	// input.
+	InsertBulkParticipant(ctx context.Context, tournamentID string, participants []string) ([]string, error)
+
+	// GetParticipants returns all participants registered to the given tournament,
+	// ordered by registration time. It returns an empty slice if there are none.
+	GetParticipants(ctx context.Context, tournamentID string) ([]participant.Participant, error)
+
+	StartTournament(ctx context.Context, tournamentID string) error
+
+	DeleteParticipant(ctx context.Context, tournamentID, participantID string) error
+	GetTournaments() (tournaments []tournament.Tournament, err error)
+	GetTournamentById(id string) (tournament.Tournament, error)
+	DeleteTournamentById(ctx context.Context, id string) error
+	UpdateTournament(ctx context.Context, id string, payload UpdateTournamentRequest) error
+	UpdateTournamentState(ctx context.Context, id string, state string) error
 }
 
 type SQLiteTournamentRepository struct {
@@ -52,19 +58,12 @@ type SQLiteTournamentRepository struct {
 	ChallongeAPIKey string
 }
 
-func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req CreateTournamentRequest) (*tournament.Tournament, error) {
+func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req tournament.CreateRequest) (*tournament.Tournament, error) {
 	name := strings.TrimSpace(req.Name)
 	track := strings.TrimSpace(req.Track)
 
-	names := make([]string, 0, len(req.Entrants))
-	for _, entrant := range req.Entrants {
-		if entrant = strings.TrimSpace(entrant); entrant != "" {
-			names = append(names, entrant)
-		}
-	}
-
-	if name == "" || track == "" || len(names) == 0 {
-		return nil, fmt.Errorf("name, track, and at least one entrant are required")
+	if name == "" || track == "" {
+		return nil, fmt.Errorf("name and track are required")
 	}
 
 	if req.Size <= 0 || req.Size&(req.Size-1) != 0 {
@@ -79,6 +78,7 @@ func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req C
 		}
 	}
 
+	// create challonge tournament while we at it to save time later
 	challongeRes, err := challonge.CreateTournament(
 		ctx,
 		r.ChallongeAPIKey,
@@ -89,16 +89,8 @@ func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req C
 	if err != nil {
 		return nil, err
 	}
-
 	challongeID := challongeRes.Data.ID
 	challongeURL := challongeRes.Data.Attributes.URL
-
-	// randomize qualifying order if enabled
-	if req.RandomizeQualifyingOrder {
-		rand.Shuffle(len(names), func(i, j int) {
-			names[i], names[j] = names[j], names[i]
-		})
-	}
 
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -113,7 +105,7 @@ func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req C
 		return nil, err
 	}
 
-	// track table
+	// TODO: should handle exisiting track only in the future.
 	_, err = tx.ExecContext(ctx, `
 INSERT INTO tracks (id, name, created_at, updated_at)
 VALUES (?, ?, ?, ?)
@@ -145,11 +137,15 @@ SELECT config from criteria_configs WHERE id = ?
 	}
 
 	// tournaments table
-	if _, err := tx.ExecContext(ctx, `
+	var t tournament.Tournament
+
+	err = tx.QueryRowContext(ctx, `
 INSERT INTO tournaments (
     id, name, starting_date, track_id, qualifying_order,
     size, randomize_qualifying_order, status, created_at, updated_at, criteria_config, qualifying_rounds
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, name, starting_date, track_id, qualifying_order,
+          size, status, created_at, updated_at, criteria_config, qualifying_rounds
 `,
 		tournamentID,
 		name,
@@ -158,54 +154,25 @@ INSERT INTO tournaments (
 		"",
 		req.Size,
 		req.RandomizeQualifyingOrder,
-		"qualifying",
+		"pending", // set to pending since we dont want to start the qualifying immediately
 		now,
 		now,
 		criteriaConfig,
 		req.QualifyingRounds,
-	); err != nil {
-		return nil, err
-	}
-
-	participantIDs := make([]string, 0, len(names))
-
-	for _, participantName := range names {
-		participantID, err := gonanoid.New(15)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := tx.ExecContext(ctx, `
-INSERT INTO participants (
-	id, name, tournament_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?)
-		`, participantID, participantName, tournamentID, now, now); err != nil {
-			return nil, err
-		}
-
-		participantIDs = append(participantIDs, participantID)
-
-		entrantID, err := gonanoid.New(15)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, err := tx.ExecContext(ctx, `
-INSERT INTO entrants (
-	id, tournament_id, participant_id, status, score, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, entrantID, tournamentID, participantID, "pending", 0, now, now); err != nil {
-			return nil, err
-		}
-	}
-
-	qualifyingOrder := strings.Join(participantIDs, ", ")
-
-	if _, err := tx.ExecContext(ctx, `
-UPDATE tournaments
-SET qualifying_order = ?, updated_at = ?
-WHERE id = ?
-	`, qualifyingOrder, now, tournamentID); err != nil {
+	).Scan(
+		&t.ID,
+		&t.Name,
+		&t.StartingDate,
+		&t.TrackID,
+		&t.QualifyingOrder,
+		&t.Size,
+		&t.Status,
+		&t.CreatedAt,
+		&t.UpdatedAt,
+		&t.CriteriaConfig,
+		&t.QualifyingRounds,
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -223,22 +190,299 @@ INSERT INTO brackets (
 	}
 
 	if err := tx.Commit(); err != nil {
+		// remove challonge tournament if create tournament tx fails
 		if err := challonge.DeleteTournament(ctx, r.ChallongeAPIKey, challongeID); err != nil {
 			return nil, err
 		}
 		return nil, err
 	}
 
-	return &tournament.Tournament{
-		ID:              tournamentID,
-		Name:            name,
-		StartingDate:    startingDate.Format(time.RFC3339),
-		Track:           &track,
-		QualifyingOrder: qualifyingOrder,
-		Status:          "qualifying",
-		URL:             challongeURL,
-		Size:            req.Size,
-	}, nil
+	return &t, nil
+}
+
+func (r *SQLiteTournamentRepository) InsertBulkParticipant(
+	ctx context.Context,
+	tournamentID string,
+	participants []string,
+) ([]string, error) {
+	tournamentID = strings.TrimSpace(tournamentID)
+	if tournamentID == "" {
+		return nil, fmt.Errorf("tournament id is required")
+	}
+
+	names := make([]string, 0, len(participants))
+	for _, p := range participants {
+		if p = strings.TrimSpace(p); p != "" {
+			names = append(names, p)
+		}
+	}
+	if len(names) == 0 {
+		return nil, fmt.Errorf("at least one participant is required")
+	}
+
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// make sure the tournament exists and grab its current qualifying order
+	var existingOrder string
+	err = tx.QueryRowContext(ctx,
+		`SELECT qualifying_order FROM tournaments WHERE id = ?`,
+		tournamentID,
+	).Scan(&existingOrder)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("tournament %s not found", tournamentID)
+		}
+		return nil, err
+	}
+
+	now := time.Now().Unix()
+
+	participantStmt, err := tx.PrepareContext(ctx, `
+INSERT INTO participants (
+	id, name, tournament_id, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?)
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer participantStmt.Close()
+
+	entrantStmt, err := tx.PrepareContext(ctx, `
+INSERT INTO entrants (
+	id, tournament_id, participant_id, status, score, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer entrantStmt.Close()
+
+	participantIDs := make([]string, 0, len(names))
+
+	for _, name := range names {
+		participantID, err := gonanoid.New(15)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := participantStmt.ExecContext(
+			ctx, participantID, name, tournamentID, now, now,
+		); err != nil {
+			return nil, err
+		}
+
+		entrantID, err := gonanoid.New(15)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := entrantStmt.ExecContext(
+			ctx, entrantID, tournamentID, participantID, "pending", 0, now, now,
+		); err != nil {
+			return nil, err
+		}
+
+		participantIDs = append(participantIDs, participantID)
+	}
+
+	// push the new participant ids onto the end of the qualifying order
+	newOrder := strings.Join(participantIDs, ", ")
+	if strings.TrimSpace(existingOrder) != "" {
+		newOrder = existingOrder + ", " + newOrder
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE tournaments
+SET qualifying_order = ?, updated_at = ?
+WHERE id = ?
+`, newOrder, now, tournamentID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return participantIDs, nil
+}
+
+func (r *SQLiteTournamentRepository) GetParticipants(
+	ctx context.Context,
+	tournamentID string,
+) ([]participant.Participant, error) {
+	tournamentID = strings.TrimSpace(tournamentID)
+	if tournamentID == "" {
+		return nil, fmt.Errorf("tournament id is required")
+	}
+
+	rows, err := r.DB.QueryContext(ctx, `
+SELECT id, name, tournament_id, created_at, updated_at
+FROM participants
+WHERE tournament_id = ?
+ORDER BY created_at ASC, rowid ASC
+`, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	participants := make([]participant.Participant, 0)
+
+	for rows.Next() {
+		var p participant.Participant
+		if err := rows.Scan(
+			&p.ID,
+			&p.Name,
+			&p.TournamentID,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		participants = append(participants, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return participants, nil
+}
+
+func (r *SQLiteTournamentRepository) StartTournament(
+	ctx context.Context,
+	tournamentID string,
+) error {
+	tournamentID = strings.TrimSpace(tournamentID)
+	if tournamentID == "" {
+		return fmt.Errorf("tournament id is required")
+	}
+
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var (
+		status          string
+		randomize       bool
+		qualifyingOrder string
+	)
+
+	err = tx.QueryRowContext(ctx, `
+SELECT status, randomize_qualifying_order, qualifying_order
+FROM tournaments
+WHERE id = ?
+`, tournamentID).Scan(&status, &randomize, &qualifyingOrder)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("tournament %s not found", tournamentID)
+		}
+		return err
+	}
+
+	if status != "pending" {
+		return fmt.Errorf("tournament has already started (status: %s)", status)
+	}
+
+	// randomize qualifying order if enabled
+	if randomize {
+		ids := make([]string, 0)
+		for _, id := range strings.Split(qualifyingOrder, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				ids = append(ids, id)
+			}
+		}
+
+		rand.Shuffle(len(ids), func(i, j int) {
+			ids[i], ids[j] = ids[j], ids[i]
+		})
+
+		qualifyingOrder = strings.Join(ids, ", ")
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE tournaments
+SET status = ?, qualifying_order = ?, updated_at = ?
+WHERE id = ?
+`, "qualifying", qualifyingOrder, time.Now().Unix(), tournamentID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *SQLiteTournamentRepository) DeleteParticipant(
+	ctx context.Context,
+	tournamentID string,
+	participantID string,
+) error {
+	tournamentID = strings.TrimSpace(tournamentID)
+	participantID = strings.TrimSpace(participantID)
+	if tournamentID == "" || participantID == "" {
+		return fmt.Errorf("tournament id and participant id are required")
+	}
+
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// entrant row first, since it references the participant
+	if _, err := tx.ExecContext(ctx, `
+DELETE FROM entrants
+WHERE tournament_id = ? AND participant_id = ?
+`, tournamentID, participantID); err != nil {
+		return err
+	}
+
+	res, err := tx.ExecContext(ctx, `
+DELETE FROM participants
+WHERE id = ? AND tournament_id = ?
+`, participantID, tournamentID)
+	if err != nil {
+		return err
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return fmt.Errorf("participant %s not found in tournament %s", participantID, tournamentID)
+	}
+
+	// take the participant out of the qualifying order
+	var existingOrder string
+	if err := tx.QueryRowContext(ctx,
+		`SELECT qualifying_order FROM tournaments WHERE id = ?`,
+		tournamentID,
+	).Scan(&existingOrder); err != nil {
+		return err
+	}
+
+	remaining := make([]string, 0)
+	for _, id := range strings.Split(existingOrder, ",") {
+		if id = strings.TrimSpace(id); id != "" && id != participantID {
+			remaining = append(remaining, id)
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE tournaments
+SET qualifying_order = ?, updated_at = ?
+WHERE id = ?
+`, strings.Join(remaining, ", "), time.Now().Unix(), tournamentID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *SQLiteTournamentRepository) setTournamentProgress(
@@ -371,6 +615,7 @@ SELECT
 	t3.url,
 	t1.criteria_config,
 	t1.qualifying_rounds,
+	t1.randomize_qualifying_order,
 	CASE WHEN t3.status = 'finalized' THEN 1 ELSE 0 END AS finalized
 FROM tournaments t1
 LEFT JOIN tracks t2
@@ -389,6 +634,7 @@ WHERE t1.id = ?
 		&t.URL,
 		&t.CriteriaConfig,
 		&t.QualifyingRounds,
+		&t.RandomizeQualifyingOrder,
 		&t.Finalized,
 	)
 	if err != nil {

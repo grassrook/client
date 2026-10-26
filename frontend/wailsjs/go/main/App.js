@@ -34,6 +34,10 @@ export function DeleteCriteriaConfig(arg1) {
   return window['go']['main']['App']['DeleteCriteriaConfig'](arg1);
 }
 
+export function DeleteParticipant(arg1, arg2) {
+  return window['go']['main']['App']['DeleteParticipant'](arg1, arg2);
+}
+
 export function DeleteTournament(arg1, arg2) {
   return window['go']['main']['App']['DeleteTournament'](arg1, arg2);
 }
@@ -70,6 +74,10 @@ export function GetNote(arg1) {
   return window['go']['main']['App']['GetNote'](arg1);
 }
 
+export function GetParticipants(arg1) {
+  return window['go']['main']['App']['GetParticipants'](arg1);
+}
+
 export function GetTournament(arg1) {
   return window['go']['main']['App']['GetTournament'](arg1);
 }
@@ -90,12 +98,20 @@ export function InitializeQualifyingScores(arg1) {
   return window['go']['main']['App']['InitializeQualifyingScores'](arg1);
 }
 
+export function InsertBulkParticipant(arg1, arg2) {
+  return window['go']['main']['App']['InsertBulkParticipant'](arg1, arg2);
+}
+
 export function ResetBattle(arg1, arg2) {
   return window['go']['main']['App']['ResetBattle'](arg1, arg2);
 }
 
 export function SetChallongeAPIKey(arg1) {
   return window['go']['main']['App']['SetChallongeAPIKey'](arg1);
+}
+
+export function StartTournament(arg1) {
+  return window['go']['main']['App']['StartTournament'](arg1);
 }
 
 export function SyncTournament(arg1) {

@@ -37,7 +37,8 @@ func RunMigrations(workspace string) error {
 	}
 	defer db.Close()
 
-	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+	db.SetMaxOpenConns(1)
+	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{NoTxWrap: true})
 	if err != nil {
 		return err
 	}

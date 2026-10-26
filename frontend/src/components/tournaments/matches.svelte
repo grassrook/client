@@ -16,12 +16,6 @@
   } from "$src/components/ui/alert-dialog";
   import { Badge } from "$src/components/ui/badge";
   import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-  } from "$src/components/ui/card";
-  import {
     Tabs,
     TabsContent,
     TabsList,
@@ -45,7 +39,6 @@
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
-  import Separator from "../ui/separator/separator.svelte";
 
   type Battles = repository.ActiveBattle[];
 
@@ -299,7 +292,8 @@
     </Empty>
   {:else}
     <TabsList
-      class="overflow-x w-full justify-start gap-1 overscroll-x-contain"
+      variant="line"
+      class="overflow-x justify-start gap-1 overscroll-x-contain"
     >
       {#each sortedMatches as round, i}
         {@const roundNumber = round[0]?.match[0]?.round ?? 0}
@@ -347,27 +341,18 @@
           {@const hasBothParticipants =
             match[0].participantId && match[1].participantId}
 
-          <Card
-            class={`border-border/80 cursor-pointer transition-colors hover:border-primary/60 hover:bg-muted/50 gap-1 ${
+          <div
+            class={`border border-border/80 rounded-lg transition-colors hover:border-primary/60 hover:bg-muted/50 ${
               selectedMatchId === currentMatch.matchId
                 ? "border-primary/60 bg-muted/50"
                 : ""
             }`}
-            onclick={() => {
-              if (currentMatch.status === "open" && hasBothParticipants) {
-                if (selectedMatchId !== currentMatch.matchId) {
-                  onStartMatch(match);
-                } else {
-                  clearMatchSelection();
-                }
-              }
-            }}
           >
-            <CardHeader class="border-b">
+            <div class="border-b px-4 py-3">
               <div class="flex items-center justify-between">
-                <CardTitle class="text-sm"
-                  >Match {round.indexOf(matchData) + 1}</CardTitle
-                >
+                <div class="text-sm font-semibold">
+                  Match {round.indexOf(matchData) + 1}
+                </div>
 
                 <div class="flex items-center gap-2">
                   {#if currentMatch.status !== "open"}
@@ -377,55 +362,74 @@
                   {/if}
                 </div>
               </div>
-            </CardHeader>
+            </div>
 
-            <CardContent class="px-0 ">
-              <div class="mx-4 flex items-center gap-3 pt-3">
-                {#each match as entrant, idx}
-                  {#if idx === 1}
-                    <span
-                      class="shrink-0 text-xs uppercase text-muted-foreground"
-                    >
-                      VS
-                    </span>
-                  {/if}
-
-                  <div
-                    class={`flex min-w-0 flex-1 justify-between items-center gap-2 ${
-                      idx === 1 ? "flex-row-reverse" : ""
-                    }`}
-                  >
-                    <div
-                      class={`flex items-center ${idx === 1 ? "flex-row-reverse" : ""}`}
-                    >
-                      <span class="min-w-0 truncate font-medium">
-                        {entrant.participant_name ?? "TBD"}
+            <div class="px-0">
+              <button
+                type="button"
+                class="block w-full cursor-pointer text-left"
+                disabled={currentMatch.status !== "open" ||
+                  !hasBothParticipants}
+                onclick={() => {
+                  if (currentMatch.status === "open" && hasBothParticipants) {
+                    if (selectedMatchId !== currentMatch.matchId) {
+                      onStartMatch(match);
+                    } else {
+                      clearMatchSelection();
+                    }
+                  }
+                }}
+              >
+                <div class="mx-4 flex items-center gap-3 pt-3 pb-3">
+                  {#each match as entrant, idx}
+                    {#if idx === 1}
+                      <span
+                        class="shrink-0 text-xs uppercase text-muted-foreground"
+                      >
+                        VS
                       </span>
+                    {/if}
 
-                      {#if hasBothParticipants && matchData.leadingParticipantId === entrant.participantId && currentMatch.status !== "complete"}
-                        <Badge variant="outline">Lead</Badge>
-                      {/if}
-                    </div>
-                    <span
-                      class={`shrink-0 text-lg font-semibold tabular-nums ${
-                        entrant.participant_name && entrant.winnerId
-                          ? entrant.winnerId === entrant.challongeParticipantId
-                            ? "text-green-500"
-                            : "text-muted-foreground/30"
-                          : ""
+                    <div
+                      class={`flex min-w-0 flex-1 justify-between items-center gap-2 ${
+                        idx === 1 ? "flex-row-reverse" : ""
                       }`}
                     >
-                      {entrant.score}
-                    </span>
-                  </div>
-                {/each}
-              </div>
+                      <div
+                        class={`flex items-center ${
+                          idx === 1 ? "flex-row-reverse" : ""
+                        }`}
+                      >
+                        <span class="min-w-0 truncate font-medium">
+                          {entrant.participant_name ?? "TBD"}
+                        </span>
+
+                        {#if hasBothParticipants && matchData.leadingParticipantId === entrant.participantId && currentMatch.status !== "complete"}
+                          <Badge variant="outline">Lead</Badge>
+                        {/if}
+                      </div>
+
+                      <span
+                        class={`shrink-0 text-lg font-semibold tabular-nums ${
+                          entrant.participant_name && entrant.winnerId
+                            ? entrant.winnerId ===
+                              entrant.challongeParticipantId
+                              ? "text-green-500"
+                              : "text-muted-foreground/30"
+                            : ""
+                        }`}
+                      >
+                        {entrant.score}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+              </button>
 
               {#if currentMatch.bothRunFinished && selectedMatchId === currentMatch.matchId}
-                <Separator class="my-2" />
                 <ButtonGroup.Root
                   orientation="horizontal"
-                  class="flex justify-end w-full px-4 pt-2"
+                  class="flex justify-end w-full pr-2 py-2"
                   onclick={(event) => event.stopPropagation()}
                 >
                   <AlertDialog bind:open={omtDialogOpen}>
@@ -447,9 +451,9 @@
                       </AlertDialogHeader>
 
                       <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isProcessing}
-                          >Cancel</AlertDialogCancel
-                        >
+                        <AlertDialogCancel disabled={isProcessing}>
+                          Cancel
+                        </AlertDialogCancel>
 
                         <AlertDialogAction
                           disabled={isProcessing}
@@ -484,9 +488,9 @@
                       </AlertDialogHeader>
 
                       <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isProcessing}
-                          >Cancel</AlertDialogCancel
-                        >
+                        <AlertDialogCancel disabled={isProcessing}>
+                          Cancel
+                        </AlertDialogCancel>
 
                         <AlertDialogAction
                           disabled={isProcessing}
@@ -503,13 +507,14 @@
                   </AlertDialog>
                 </ButtonGroup.Root>
               {/if}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         {/each}
       </div>
     </TabsContent>
   {/each}
 </Tabs>
+
 {#if progress >= 100 && !finalized}
   <div class="w-full pt-4">
     <AlertDialog bind:open={finalizeDialogOpen}>

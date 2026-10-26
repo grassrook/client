@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import { Card, CardContent } from "$src/components/ui/card";
   import Empty from "$src/components/ui/empty/empty.svelte";
   import EmptyDescription from "$src/components/ui/empty/empty-description.svelte";
   import EmptyHeader from "$src/components/ui/empty/empty-header.svelte";
@@ -40,10 +39,10 @@
   const chase = $derived(categories.find(([id]) => id === "chase"));
 </script>
 
-<div class="relative" aria-busy={judgement.processing}>
+<div class="relative mt-2" aria-busy={judgement.processing}>
   {#if isQualifying || stage.matchId}
-    <Card>
-      <CardContent>
+    <div class="rounded-xl border text-card-foreground">
+      <div class="p-2">
         <div class="grid min-w-0 grid-cols-2 items-stretch gap-3 md:gap-2">
           {#if common}
             {@const [, category] = common}
@@ -68,9 +67,9 @@
         </div>
         <div class="mt-2">
           {@render children()}
-        </div></CardContent
-      >
-    </Card>
+        </div>
+      </div>
+    </div>
   {/if}
 
   {#if judgement.processing}

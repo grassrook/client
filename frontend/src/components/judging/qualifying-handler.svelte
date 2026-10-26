@@ -16,10 +16,6 @@
   import type { entrant, tournament } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
-  import Card from "../ui/card/card.svelte";
-  import CardContent from "../ui/card/card-content.svelte";
-  import CardHeader from "../ui/card/card-header.svelte";
-  import CardTitle from "../ui/card/card-title.svelte";
 
   let {
     tournament,
@@ -191,12 +187,10 @@
   );
 </script>
 
-<Card class="gap-0 border-border/70 shadow-none">
-  <CardHeader class="pb-4">
-    <CardTitle>Judgement</CardTitle>
-  </CardHeader>
-
-  <CardContent class="space-y-3 pt-0">
+<div
+  class="gap-0 rounded-xl border border-border/70 text-card-foreground shadow-none p-4"
+>
+  <div class="space-y-3">
     <div
       class="flex items-center justify-between gap-4 rounded-md border bg-muted/30 px-3 py-2.5"
     >
@@ -254,5 +248,5 @@
     >
       Reset
     </Button>
-  </CardContent>
-</Card>
+  </div>
+</div>

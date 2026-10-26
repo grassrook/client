@@ -1,11 +1,5 @@
 <script lang="ts">
   import { Badge } from "$src/components/ui/badge";
-  import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-  } from "$src/components/ui/card";
   import type { Judgement } from "$src/lib/judging.svelte";
   import type { repository } from "$wails/go/models";
 
@@ -29,12 +23,16 @@
   }
 </script>
 
-<Card class="col-span-2 gap-0 border-border/70 shadow-none h-full">
-  <CardHeader class="pb-4">
-    <CardTitle>{category.label}</CardTitle>
-  </CardHeader>
+<div
+  class="col-span-2 gap-0 border border-border/70 rounded-xl shadow-none h-full"
+>
+  <div class="p-4">
+    <div class="font-semibold text-sm leading-none tracking-tight">
+      {category.label}
+    </div>
+  </div>
   <Separator />
-  <CardContent class="space-y-1 pt-2">
+  <div class="space-y-1 px-6 pt-2 pb-6">
     <!-- Column headers -->
 
     {#if !isQualifying}
@@ -131,5 +129,5 @@
         {/if}
       </div>
     {/each}
-  </CardContent>
-</Card>
+  </div>
+</div>

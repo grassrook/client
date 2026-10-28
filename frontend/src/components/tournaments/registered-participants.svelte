@@ -40,10 +40,6 @@
   const randomized = $derived(Boolean(tournament.randomizeQualifyingOrder));
   const canReorder = $derived(editable && !randomized);
 
-  $effect(() => {
-    console.log(tournament);
-  });
-
   const orderIds = $derived.by(() => {
     const order = tournament.qualifying_order as unknown as string | string[];
     if (Array.isArray(order)) return order;
@@ -177,6 +173,14 @@
       .filter((name) => name !== ""),
   );
 
+  const existingDriverIds = $derived(
+    new Set(
+      orderedEntrants
+        .map((entrant) => entrant.driverId)
+        .filter((id) => id !== ""),
+    ),
+  );
+
   const matchingDrivers = $derived.by(() => {
     const query = driverSearch.trim().toLowerCase();
 
@@ -184,7 +188,8 @@
       .filter(
         (driver) =>
           driver.name.toLowerCase().includes(query) &&
-          !selectedDrivers.some((selected) => selected.id === driver.id),
+          !selectedDrivers.some((selected) => selected.id === driver.id) &&
+          !existingDriverIds.has(driver.id),
       )
       .slice(0, 8);
   });

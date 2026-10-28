@@ -30,6 +30,10 @@ export function CreateTournamentActivityLog(arg1) {
   return window['go']['main']['App']['CreateTournamentActivityLog'](arg1);
 }
 
+export function CreateTrack(arg1) {
+  return window['go']['main']['App']['CreateTrack'](arg1);
+}
+
 export function DeleteCriteriaConfig(arg1) {
   return window['go']['main']['App']['DeleteCriteriaConfig'](arg1);
 }
@@ -40,6 +44,10 @@ export function DeleteParticipant(arg1, arg2) {
 
 export function DeleteTournament(arg1, arg2) {
   return window['go']['main']['App']['DeleteTournament'](arg1, arg2);
+}
+
+export function DeleteTrack(arg1) {
+  return window['go']['main']['App']['DeleteTrack'](arg1);
 }
 
 export function GetActiveMatches(arg1) {
@@ -88,6 +96,10 @@ export function GetTournamentActivityLogs(arg1) {
 
 export function GetTournaments() {
   return window['go']['main']['App']['GetTournaments']();
+}
+
+export function GetTracks() {
+  return window['go']['main']['App']['GetTracks']();
 }
 
 export function HasChallongeAPIKey() {
@@ -144,4 +156,8 @@ export function UpdateTournament(arg1, arg2) {
 
 export function UpdateTournamentState(arg1, arg2) {
   return window['go']['main']['App']['UpdateTournamentState'](arg1, arg2);
+}
+
+export function UpdateTrack(arg1) {
+  return window['go']['main']['App']['UpdateTrack'](arg1);
 }

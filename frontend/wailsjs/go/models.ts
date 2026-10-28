@@ -354,7 +354,7 @@ export namespace tournament {
 	    name: string;
 	    size: number;
 	    startingDate: string;
-	    track: string;
+	    trackID: string;
 	    criteriaConfigID: number;
 	    qualifyingRounds: number;
 	    randomizeQualifyingOrder: boolean;
@@ -368,7 +368,7 @@ export namespace tournament {
 	        this.name = source["name"];
 	        this.size = source["size"];
 	        this.startingDate = source["startingDate"];
-	        this.track = source["track"];
+	        this.trackID = source["trackID"];
 	        this.criteriaConfigID = source["criteriaConfigID"];
 	        this.qualifyingRounds = source["qualifyingRounds"];
 	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
@@ -457,6 +457,55 @@ export namespace tournamentactivitylog {
 	        this.logType = source["logType"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+
+}
+
+export namespace track {
+	
+	export class CreateTrackReq {
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateTrackReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	    }
+	}
+	export class Track {
+	    id: string;
+	    name: string;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Track(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class UpdateTrackReq {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateTrackReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
 	    }
 	}
 

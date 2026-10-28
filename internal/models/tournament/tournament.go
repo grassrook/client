@@ -23,7 +23,7 @@ type CreateRequest struct {
 	Name                     string `json:"name"`
 	Size                     int    `json:"size"`
 	StartingDate             string `json:"startingDate"`
-	Track                    string `json:"track"`
+	TrackID                  string `json:"trackID"`
 	CriteriaConfigID         int    `json:"criteriaConfigID"`
 	QualifyingRounds         int    `json:"qualifyingRounds"`
 	RandomizeQualifyingOrder bool   `json:"randomizeQualifyingOrder"`

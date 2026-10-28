@@ -60,10 +60,9 @@ type SQLiteTournamentRepository struct {
 
 func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req tournament.CreateRequest) (*tournament.Tournament, error) {
 	name := strings.TrimSpace(req.Name)
-	track := strings.TrimSpace(req.Track)
 
-	if name == "" || track == "" {
-		return nil, fmt.Errorf("name and track are required")
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
 	}
 
 	if req.Size <= 0 || req.Size&(req.Size-1) != 0 {
@@ -100,29 +99,6 @@ func (r *SQLiteTournamentRepository) CreateTournament(ctx context.Context, req t
 
 	now := time.Now().Unix()
 
-	trackID, err := gonanoid.New(15)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: should handle exisiting track only in the future.
-	_, err = tx.ExecContext(ctx, `
-INSERT INTO tracks (id, name, created_at, updated_at)
-VALUES (?, ?, ?, ?)
-ON CONFLICT(name) DO NOTHING
-`, trackID, track, now, now)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.QueryRowContext(ctx,
-		`SELECT id FROM tracks WHERE name = ?`,
-		track,
-	).Scan(&trackID)
-	if err != nil {
-		return nil, err
-	}
-
 	tournamentID, err := gonanoid.New(15)
 	if err != nil {
 		return nil, err
@@ -150,7 +126,7 @@ RETURNING id, name, starting_date, track_id, qualifying_order,
 		tournamentID,
 		name,
 		startingDate.Unix(),
-		trackID,
+		req.TrackID,
 		"",
 		req.Size,
 		req.RandomizeQualifyingOrder,

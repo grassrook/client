@@ -170,8 +170,8 @@ func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournam
 	return *t, err
 }
 
-func (a *App) InsertBulkParticipant(tournamentID string, participants []string) ([]string, error) {
-	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, participants)
+func (a *App) InsertBulkParticipant(tournamentID string, driverIDs []string) ([]string, error) {
+	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, driverIDs)
 	if err != nil {
 		return nil, err
 	}

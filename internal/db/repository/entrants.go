@@ -37,7 +37,8 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 			e.participant_id,
 			p.name,
 			e.status,
-			e.score
+			e.score,
+			p.driver_id
 		FROM entrants e
 		INNER JOIN participants p ON p.id = e.participant_id
 		WHERE e.tournament_id = ?
@@ -59,6 +60,7 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 			&e.Name,
 			&e.Status,
 			&score,
+			&e.DriverID,
 		); err != nil {
 			return nil, fmt.Errorf("scan tournament entrant: %w", err)
 		}

@@ -37,7 +37,7 @@ type TournamentRepository interface {
 	// pushed onto the end of the tournament's qualifying_order. It returns the IDs
 	// of the created participants, in the same order as the (trimmed, non-empty)
 	// input.
-	InsertBulkParticipant(ctx context.Context, tournamentID string, participants []string) ([]string, error)
+	InsertBulkParticipant(ctx context.Context, tournamentID string, driverIDs []string) ([]string, error)
 
 	// GetParticipants returns all participants registered to the given tournament,
 	// ordered by registration time. It returns an empty slice if there are none.
@@ -179,21 +179,32 @@ INSERT INTO brackets (
 func (r *SQLiteTournamentRepository) InsertBulkParticipant(
 	ctx context.Context,
 	tournamentID string,
-	participants []string,
+	driverIDs []string,
 ) ([]string, error) {
 	tournamentID = strings.TrimSpace(tournamentID)
 	if tournamentID == "" {
 		return nil, fmt.Errorf("tournament id is required")
 	}
 
-	names := make([]string, 0, len(participants))
-	for _, p := range participants {
-		if p = strings.TrimSpace(p); p != "" {
-			names = append(names, p)
+	ids := make([]string, 0, len(driverIDs))
+	seen := make(map[string]struct{}, len(driverIDs))
+
+	for _, id := range driverIDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
 		}
+
+		if _, exists := seen[id]; exists {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		ids = append(ids, id)
 	}
-	if len(names) == 0 {
-		return nil, fmt.Errorf("at least one participant is required")
+
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("at least one driver is required")
 	}
 
 	tx, err := r.DB.BeginTx(ctx, nil)
@@ -202,12 +213,13 @@ func (r *SQLiteTournamentRepository) InsertBulkParticipant(
 	}
 	defer tx.Rollback()
 
-	// make sure the tournament exists and grab its current qualifying order
+	// ensure the tournament exists and get its current qualifying order.
 	var existingOrder string
-	err = tx.QueryRowContext(ctx,
-		`SELECT qualifying_order FROM tournaments WHERE id = ?`,
-		tournamentID,
-	).Scan(&existingOrder)
+	err = tx.QueryRowContext(ctx, `
+		SELECT qualifying_order
+		FROM tournaments
+		WHERE id = ?
+	`, tournamentID).Scan(&existingOrder)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("tournament %s not found", tournamentID)
@@ -217,37 +229,59 @@ func (r *SQLiteTournamentRepository) InsertBulkParticipant(
 
 	now := time.Now().Unix()
 
+	// look up each driver's name and insert the linked participant.
 	participantStmt, err := tx.PrepareContext(ctx, `
-INSERT INTO participants (
-	id, name, tournament_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?)
-`)
+		INSERT INTO participants (
+			id, name, tournament_id, driver_id, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?)
+	`)
 	if err != nil {
 		return nil, err
 	}
 	defer participantStmt.Close()
 
 	entrantStmt, err := tx.PrepareContext(ctx, `
-INSERT INTO entrants (
-	id, tournament_id, participant_id, status, score, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?)
-`)
+		INSERT INTO entrants (
+			id, tournament_id, participant_id, status, score,
+			created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`)
 	if err != nil {
 		return nil, err
 	}
 	defer entrantStmt.Close()
 
-	participantIDs := make([]string, 0, len(names))
+	participantIDs := make([]string, 0, len(ids))
 
-	for _, name := range names {
+	for _, driverID := range ids {
+		var name string
+		err := tx.QueryRowContext(ctx, `
+			SELECT name
+			FROM drivers
+			WHERE id = ?
+		`, driverID).Scan(&name)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, fmt.Errorf("driver %s not found", driverID)
+			}
+			return nil, err
+		}
+
 		participantID, err := gonanoid.New(15)
 		if err != nil {
 			return nil, err
 		}
 
-		if _, err := participantStmt.ExecContext(
-			ctx, participantID, name, tournamentID, now, now,
-		); err != nil {
+		_, err = participantStmt.ExecContext(
+			ctx,
+			participantID,
+			name,
+			tournamentID,
+			driverID,
+			now,
+			now,
+		)
+		if err != nil {
 			return nil, err
 		}
 
@@ -256,26 +290,35 @@ INSERT INTO entrants (
 			return nil, err
 		}
 
-		if _, err := entrantStmt.ExecContext(
-			ctx, entrantID, tournamentID, participantID, "pending", 0, now, now,
-		); err != nil {
+		_, err = entrantStmt.ExecContext(
+			ctx,
+			entrantID,
+			tournamentID,
+			participantID,
+			"pending",
+			0,
+			now,
+			now,
+		)
+		if err != nil {
 			return nil, err
 		}
 
 		participantIDs = append(participantIDs, participantID)
 	}
 
-	// push the new participant ids onto the end of the qualifying order
+	// append the new participants to the qualifying order.
 	newOrder := strings.Join(participantIDs, ", ")
 	if strings.TrimSpace(existingOrder) != "" {
 		newOrder = existingOrder + ", " + newOrder
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-UPDATE tournaments
-SET qualifying_order = ?, updated_at = ?
-WHERE id = ?
-`, newOrder, now, tournamentID); err != nil {
+	_, err = tx.ExecContext(ctx, `
+		UPDATE tournaments
+		SET qualifying_order = ?, updated_at = ?
+		WHERE id = ?
+	`, newOrder, now, tournamentID)
+	if err != nil {
 		return nil, err
 	}
 

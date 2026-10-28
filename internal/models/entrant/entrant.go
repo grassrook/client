@@ -7,4 +7,5 @@ type Entrant struct {
 	Name          string   `json:"name"`
 	Status        string   `json:"status"`
 	Score         *float64 `json:"score"`
+	DriverID      string   `json:"driverId"`
 }

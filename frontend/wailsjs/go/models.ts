@@ -62,6 +62,7 @@ export namespace entrant {
 	    name: string;
 	    status: string;
 	    score?: number;
+	    driverId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entrant(source);
@@ -75,6 +76,7 @@ export namespace entrant {
 	        this.name = source["name"];
 	        this.status = source["status"];
 	        this.score = source["score"];
+	        this.driverId = source["driverId"];
 	    }
 	}
 

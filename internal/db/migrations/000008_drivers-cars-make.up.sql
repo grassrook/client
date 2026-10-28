@@ -6,6 +6,9 @@ CREATE TABLE drivers (
     updated_at INTEGER NOT NULL
 );
 
+ALTER TABLE participants
+ADD COLUMN driver_id TEXT REFERENCES drivers(id) ON DELETE SET NULL;
+
 CREATE TABLE car_makes (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL

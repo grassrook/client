@@ -3,8 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"judginginternal/internal/models/track"
 	"time"
+
+	"github.com/mattn/go-sqlite3"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -77,11 +80,24 @@ func (r *SQLiteTracksRepository) GetAll(ctx context.Context) ([]track.Track, err
 	return tracks, nil
 }
 
+var ErrTrackInUse = errors.New(
+	"this track is assigned to one or more tournaments",
+)
+
 func (r *SQLiteTracksRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.DB.ExecContext(ctx, `
 		DELETE FROM tracks
 		WHERE id = ?
 	`, id)
+	if err == nil {
+		return nil
+	}
+
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) &&
+		sqliteErr.ExtendedCode == sqlite3.ErrConstraintForeignKey {
+		return ErrTrackInUse
+	}
 
 	return err
 }

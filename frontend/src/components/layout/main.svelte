@@ -104,13 +104,22 @@
               </Sidebar.MenuItem>
 
               <Sidebar.MenuItem>
-                <Sidebar.MenuButton class="cursor-not-allowed opacity-45">
+                <Sidebar.MenuButton>
                   {#snippet child({ props })}
-                    <div {...props} aria-disabled="true">
+                    <a
+                      {...props}
+                      href="/tracks"
+                      use:link
+                      use:active={{
+                        path: "/tracks",
+                        className: "bg-sidebar-accent",
+                        inactiveClassName:
+                          "hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                      }}
+                    >
                       <MapPinned aria-hidden="true" />
                       <span>Tracks</span>
-                      <span class="ml-auto text-[10px] uppercase">Soon</span>
-                    </div>
+                    </a>
                   {/snippet}
                 </Sidebar.MenuButton>
               </Sidebar.MenuItem>

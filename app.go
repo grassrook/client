@@ -12,6 +12,7 @@ import (
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
 	"judginginternal/internal/models/tournament"
 	tournamentactivitylog "judginginternal/internal/models/tournament_activity_log"
+	"judginginternal/internal/models/track"
 	"net/http"
 	"path"
 
@@ -25,6 +26,7 @@ type App struct {
 	ctx                        context.Context
 	cfg                        *config.Config
 	tournamentRepo             repository.TournamentRepository
+	tracksRepo                 repository.TracksRepository
 	matchesRepo                repository.MatchesRepository
 	bracketRepo                repository.BracketRepository
 	entrantsRepo               repository.EntrantsRepository
@@ -48,6 +50,10 @@ func (a *App) startup(ctx context.Context) {
 	a.tournamentRepo = &repository.SQLiteTournamentRepository{
 		DB:              client,
 		ChallongeAPIKey: a.cfg.ChallongeApiKey,
+	}
+
+	a.tracksRepo = &repository.SQLiteTracksRepository{
+		DB: client,
 	}
 
 	a.matchesRepo = &repository.SQLiteMatchesRepository{
@@ -111,6 +117,8 @@ func (a *App) SetChallongeAPIKey(key string) error {
 
 	return a.cfg.Set(config.ChallongeApiKey, key)
 }
+
+// -- Tournament --
 
 func (a *App) GetTournaments() ([]tournament.Tournament, error) {
 	tournaments, err := a.tournamentRepo.GetTournaments()
@@ -215,6 +223,30 @@ func (a *App) SyncTournament(id string) error {
 	return a.bracketRepo.Sync(a.ctx, id)
 }
 
+// -- Track --
+
+func (a *App) GetTracks() ([]track.Track, error) {
+	tracks, err := a.tracksRepo.GetAll(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tracks, nil
+}
+
+func (a *App) CreateTrack(trackreq track.CreateTrackReq) error {
+	return a.tracksRepo.Create(a.ctx, trackreq)
+}
+
+func (a *App) DeleteTrack(id string) error {
+	return a.tracksRepo.Delete(a.ctx, id)
+}
+
+func (a *App) UpdateTrack(track track.UpdateTrackReq) error {
+	return a.tracksRepo.Update(a.ctx, track)
+}
+
+// -- Matches --
+
 func (a *App) GetMatch(matchID string) (repository.Match, error) {
 	match, err := a.matchesRepo.GetMatch(a.ctx, matchID)
 	if err != nil {
@@ -250,36 +282,6 @@ func (a *App) GetActiveMatches(tournamentID string) ([]repository.ActiveBattle, 
 		return nil, err
 	}
 	return matches, nil
-}
-
-func (a *App) GetEntrants(id string) ([]entrant.Entrant, error) {
-	entrants, err := a.entrantsRepo.GetEntrants(a.ctx, id)
-	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to get tournament: %v", err)
-		return nil, err
-	}
-
-	return entrants, nil
-}
-
-func (a *App) UpdateEntrant(req repository.UpdateEntrantParams) error {
-	return a.entrantsRepo.UpdateEntrant(a.ctx, req)
-}
-
-func (a *App) ConcludeQualifers(tournamentId string) error {
-	err := a.entrantsRepo.ConcludeQualifiers(a.ctx, tournamentId)
-	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to conclude qualifers: %v", err)
-		return err
-	}
-
-	log := tournamentactivitylog.CreateTournamentActivityLogInput{
-		TournamentID: tournamentId,
-		Content:      "Qualifying finished",
-		LogType:      tournamentactivitylog.QUALIFYING_FINISHED,
-	}
-
-	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
 }
 
 func (a *App) ConcludeBattle(tournamentID, matchID string) error {
@@ -328,6 +330,40 @@ func (a *App) ChangeLeader(tournamentID, matchID string) error {
 	return nil
 }
 
+// -- Entrants --
+
+func (a *App) GetEntrants(id string) ([]entrant.Entrant, error) {
+	entrants, err := a.entrantsRepo.GetEntrants(a.ctx, id)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Failed to get tournament: %v", err)
+		return nil, err
+	}
+
+	return entrants, nil
+}
+
+func (a *App) UpdateEntrant(req repository.UpdateEntrantParams) error {
+	return a.entrantsRepo.UpdateEntrant(a.ctx, req)
+}
+
+func (a *App) ConcludeQualifers(tournamentId string) error {
+	err := a.entrantsRepo.ConcludeQualifiers(a.ctx, tournamentId)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Failed to conclude qualifers: %v", err)
+		return err
+	}
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentId,
+		Content:      "Qualifying finished",
+		LogType:      tournamentactivitylog.QUALIFYING_FINISHED,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+}
+
+// -- Criteria Configs --
+
 func (a *App) GetCriteriaConfigs() ([]repository.CriteriaConfig, error) {
 	return a.criteriaConfigRepo.Get()
 }
@@ -353,6 +389,8 @@ func (a *App) DeleteCriteriaConfig(id int) error {
 	return a.criteriaConfigRepo.Delete(id)
 }
 
+// -- Qualifying Scores --
+
 func (a *App) InitializeQualifyingScores(tournamentID string) error {
 	return a.qualifyingScoresRepo.InitializeScores(a.ctx, tournamentID)
 }
@@ -368,6 +406,8 @@ func (a *App) GetAllQualifyingScores(tournamentID string) ([]qualifyingscore.Dat
 func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, round int, score float64, status string) error {
 	return a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
 }
+
+// -- Activity Logs --
 
 func (a *App) GetTournamentActivityLogs(tournamentID string) ([]tournamentactivitylog.TournamentActivityLog, error) {
 	return a.tournamentActivityLogsRepo.GetByTournamentID(a.ctx, tournamentID)

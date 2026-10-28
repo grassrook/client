@@ -16,6 +16,9 @@
     "/tournaments/:id": wrap({
       asyncComponent: () => import("./components/pages/tournament.svelte"),
     }),
+    "/tracks": wrap({
+      asyncComponent: () => import("./components/pages/tracks.svelte"),
+    }),
     "/criteria-configs": wrap({
       asyncComponent: () => import("./components/pages/criteria-config.svelte"),
     }),

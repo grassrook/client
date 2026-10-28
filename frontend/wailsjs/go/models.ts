@@ -1,3 +1,58 @@
+export namespace driver {
+	
+	export class CreateDriverReq {
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateDriverReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+	export class Driver {
+	    id: string;
+	    name: string;
+	    description: string;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Driver(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class UpdateDriverReq {
+	    id: string;
+	    name: string;
+	    description: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDriverReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	    }
+	}
+
+}
+
 export namespace entrant {
 	
 	export class Entrant {
@@ -7,6 +62,7 @@ export namespace entrant {
 	    name: string;
 	    status: string;
 	    score?: number;
+	    driverId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Entrant(source);
@@ -20,6 +76,7 @@ export namespace entrant {
 	        this.name = source["name"];
 	        this.status = source["status"];
 	        this.score = source["score"];
+	        this.driverId = source["driverId"];
 	    }
 	}
 

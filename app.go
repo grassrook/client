@@ -7,6 +7,7 @@ import (
 	"judginginternal/internal/config"
 	"judginginternal/internal/db"
 	"judginginternal/internal/db/repository"
+	"judginginternal/internal/models/driver"
 	"judginginternal/internal/models/entrant"
 	"judginginternal/internal/models/participant"
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
@@ -27,6 +28,7 @@ type App struct {
 	cfg                        *config.Config
 	tournamentRepo             repository.TournamentRepository
 	tracksRepo                 repository.TracksRepository
+	driversRepo                repository.DriversRepository
 	matchesRepo                repository.MatchesRepository
 	bracketRepo                repository.BracketRepository
 	entrantsRepo               repository.EntrantsRepository
@@ -53,6 +55,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.tracksRepo = &repository.SQLiteTracksRepository{
+		DB: client,
+	}
+
+	a.driversRepo = &repository.SQLiteDriversRepository{
 		DB: client,
 	}
 
@@ -164,8 +170,8 @@ func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournam
 	return *t, err
 }
 
-func (a *App) InsertBulkParticipant(tournamentID string, participants []string) ([]string, error) {
-	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, participants)
+func (a *App) InsertBulkParticipant(tournamentID string, driverIDs []string) ([]string, error) {
+	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, driverIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +229,7 @@ func (a *App) SyncTournament(id string) error {
 	return a.bracketRepo.Sync(a.ctx, id)
 }
 
-// -- Track --
+// -- Tracks --
 
 func (a *App) GetTracks() ([]track.Track, error) {
 	tracks, err := a.tracksRepo.GetAll(a.ctx)
@@ -243,6 +249,28 @@ func (a *App) DeleteTrack(id string) error {
 
 func (a *App) UpdateTrack(track track.UpdateTrackReq) error {
 	return a.tracksRepo.Update(a.ctx, track)
+}
+
+// -- Drivers --
+
+func (a *App) GetDrivers() ([]driver.Driver, error) {
+	return a.driversRepo.GetAll(a.ctx)
+}
+
+func (a *App) GetDriverByID(id string) (driver.Driver, error) {
+	return a.driversRepo.GetByID(a.ctx, id)
+}
+
+func (a *App) CreateDriver(req driver.CreateDriverReq) error {
+	return a.driversRepo.Create(a.ctx, req)
+}
+
+func (a *App) UpdateDriver(req driver.UpdateDriverReq) error {
+	return a.driversRepo.Update(a.ctx, req)
+}
+
+func (a *App) DeleteDriver(id string) error {
+	return a.driversRepo.Delete(a.ctx, id)
 }
 
 // -- Matches --

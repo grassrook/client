@@ -4,18 +4,22 @@
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
   import UsersIcon from "@lucide/svelte/icons/users";
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import {
+    createMutation,
+    createQuery,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
 
   import { Button } from "$src/components/ui/button/index.js";
   import * as Dialog from "$src/components/ui/dialog/index.js";
   import * as Table from "$src/components/ui/table/index.js";
-  import { Textarea } from "$src/components/ui/textarea/index.js";
   import {
     DeleteParticipant,
+    GetDrivers,
     InsertBulkParticipant,
     UpdateTournament,
   } from "$wails/go/main/App";
-  import type { entrant, tournament } from "$wails/go/models";
+  import type { driver, entrant, tournament } from "$wails/go/models";
 
   type Props = {
     tournament: tournament.Tournament;
@@ -35,10 +39,6 @@
   // letting the user arrange it by hand
   const randomized = $derived(Boolean(tournament.randomizeQualifyingOrder));
   const canReorder = $derived(editable && !randomized);
-
-  $effect(() => {
-    console.log(tournament);
-  });
 
   const orderIds = $derived.by(() => {
     const order = tournament.qualifying_order as unknown as string | string[];
@@ -69,10 +69,15 @@
     items = [...orderedEntrants];
   });
 
+  const driversQuery = createQuery(() => ({
+    queryKey: ["drivers"],
+    queryFn: () => GetDrivers(),
+  }));
+
   // ---------- mutations ----------
   const insertParticipantsMutation = createMutation(() => ({
-    mutationFn: async ({ names }: { names: string[] }) =>
-      InsertBulkParticipant(tournament.id, names),
+    mutationFn: async ({ driverIDs }: { driverIDs: string[] }) =>
+      InsertBulkParticipant(tournament.id, driverIDs),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["entrants", tournament.id],
@@ -154,25 +159,83 @@
     overIndex = null;
   }
 
-  // ---------- create dialog ----------
+  // ---------- create participants ----------
   let createOpen = $state(false);
   let rawNames = $state("");
+  let driverSearch = $state("");
+  let selectedDrivers = $state<driver.Driver[]>([]);
+  let driverSearchFocused = $state(false);
 
   const parsedNames = $derived(
     rawNames
       .split("\n")
-      .map((n) => n.trim())
-      .filter((n) => n !== ""),
+      .map((name) => name.trim())
+      .filter((name) => name !== ""),
   );
 
+  const existingDriverIds = $derived(
+    new Set(
+      orderedEntrants
+        .map((entrant) => entrant.driverId)
+        .filter((id) => id !== ""),
+    ),
+  );
+
+  const matchingDrivers = $derived.by(() => {
+    const query = driverSearch.trim().toLowerCase();
+
+    return (driversQuery.data ?? [])
+      .filter(
+        (driver) =>
+          driver.name.toLowerCase().includes(query) &&
+          !selectedDrivers.some((selected) => selected.id === driver.id) &&
+          !existingDriverIds.has(driver.id),
+      )
+      .slice(0, 8);
+  });
+
+  // Combine selected drivers and manually entered names.
+  // Prevent duplicate names, ignoring capitalization.
+  const participantNames = $derived(
+    [...selectedDrivers.map((driver) => driver.name), ...parsedNames].filter(
+      (name, index, names) =>
+        names.findIndex(
+          (other) => other.toLowerCase() === name.toLowerCase(),
+        ) === index,
+    ),
+  );
+
+  let driverSearchInput = $state<HTMLInputElement | undefined>(undefined);
+  function selectDriver(driver: driver.Driver) {
+    selectedDrivers = [...selectedDrivers, driver];
+    driverSearch = "";
+    driverSearchFocused = false;
+    driverSearchInput?.blur();
+  }
+
+  function removeDriver(id: string) {
+    selectedDrivers = selectedDrivers.filter((driver) => driver.id !== id);
+    driverSearchFocused = false;
+    driverSearchInput?.blur();
+  }
+
+  function resetCreateForm() {
+    rawNames = "";
+    driverSearch = "";
+    selectedDrivers = [];
+    driverSearchFocused = false;
+  }
+
   function submitCreate() {
-    if (!editable || parsedNames.length === 0) return;
+    if (!editable || participantNames.length === 0) return;
 
     insertParticipantsMutation.mutate(
-      { names: parsedNames },
+      {
+        driverIDs: selectedDrivers.map((driver) => driver.id),
+      },
       {
         onSuccess: () => {
-          rawNames = "";
+          resetCreateForm();
           createOpen = false;
         },
       },
@@ -325,7 +388,10 @@
 {#if editable}
   <!-- create participants -->
   <Dialog.Root bind:open={createOpen}>
-    <Dialog.Content class="sm:max-w-md">
+    <Dialog.Content
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      class="sm:max-w-md"
+    >
       <Dialog.Header>
         <Dialog.Title>Add participants</Dialog.Title>
         <Dialog.Description
@@ -333,16 +399,82 @@
         >
       </Dialog.Header>
 
-      <Textarea
-        bind:value={rawNames}
-        rows={8}
-        placeholder={"Alice\nBob\nCharlie"}
-        disabled={insertParticipantsMutation.isPending}
-      />
-      <p class="text-xs text-muted-foreground">
-        {parsedNames.length}
-        {parsedNames.length === 1 ? "participant" : "participants"} will be added.
-      </p>
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <label class="text-sm font-medium mb-2" for="driver-search">
+            Registered drivers
+          </label>
+
+          <div class="relative mt-2">
+            <input
+              id="driver-search"
+              bind:this={driverSearchInput}
+              bind:value={driverSearch}
+              onfocus={() => (driverSearchFocused = true)}
+              onblur={() => (driverSearchFocused = false)}
+              placeholder="Search drivers..."
+              disabled={insertParticipantsMutation.isPending}
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            />
+
+            {#if driverSearchFocused}
+              <div
+                class="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+              >
+                {#if driversQuery.isPending}
+                  <p class="px-3 py-2 text-sm text-muted-foreground">
+                    Loading drivers...
+                  </p>
+                {:else if matchingDrivers.length > 0}
+                  {#each matchingDrivers as driver (driver.id)}
+                    <button
+                      type="button"
+                      class="flex w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onclick={() => {
+                        selectDriver(driver);
+                      }}
+                      onmousedown={(event) => event.preventDefault()}
+                    >
+                      {driver.name}
+                    </button>
+                  {/each}
+                {:else}
+                  <p class="px-3 py-2 text-sm text-muted-foreground">
+                    No matching drivers.
+                  </p>
+                {/if}
+              </div>
+            {/if}
+          </div>
+
+          {#if selectedDrivers.length > 0}
+            <div class="flex flex-wrap gap-2 pt-1">
+              {#each selectedDrivers as driver (driver.id)}
+                <span
+                  class="inline-flex items-center gap-2 rounded-md border bg-secondary px-2 py-1 text-sm"
+                >
+                  {driver.name}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${driver.name}`}
+                    onmousedown={(event) => event.preventDefault()}
+                    onclick={() => removeDriver(driver.id)}
+                  >
+                    ×
+                  </button>
+                </span>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <p class="text-xs text-muted-foreground">
+          {participantNames.length}
+          {participantNames.length === 1 ? "participant" : "participants"} will be
+          added.
+        </p>
+      </div>
+
       {#if insertParticipantsMutation.isError}
         <p class="text-sm text-destructive">
           {insertParticipantsMutation.error?.message ??
@@ -361,7 +493,7 @@
         <Button
           onclick={submitCreate}
           disabled={insertParticipantsMutation.isPending ||
-            parsedNames.length === 0}
+            participantNames.length === 0}
         >
           {insertParticipantsMutation.isPending
             ? "Adding..."

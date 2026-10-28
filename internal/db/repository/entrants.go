@@ -53,6 +53,7 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 	for rows.Next() {
 		var e entrant.Entrant
 		var score sql.NullFloat64
+		var driverID sql.NullString
 
 		if err := rows.Scan(
 			&e.ID,
@@ -60,11 +61,14 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 			&e.Name,
 			&e.Status,
 			&score,
-			&e.DriverID,
+			&driverID,
 		); err != nil {
 			return nil, fmt.Errorf("scan tournament entrant: %w", err)
 		}
 
+		if driverID.Valid {
+			e.DriverID = driverID.String
+		}
 		if score.Valid {
 			e.Score = &score.Float64
 		}

@@ -22,6 +22,10 @@ export function CreateCriteriaConfig(arg1) {
   return window['go']['main']['App']['CreateCriteriaConfig'](arg1);
 }
 
+export function CreateDriver(arg1) {
+  return window['go']['main']['App']['CreateDriver'](arg1);
+}
+
 export function CreateTournament(arg1) {
   return window['go']['main']['App']['CreateTournament'](arg1);
 }
@@ -36,6 +40,10 @@ export function CreateTrack(arg1) {
 
 export function DeleteCriteriaConfig(arg1) {
   return window['go']['main']['App']['DeleteCriteriaConfig'](arg1);
+}
+
+export function DeleteDriver(arg1) {
+  return window['go']['main']['App']['DeleteDriver'](arg1);
 }
 
 export function DeleteParticipant(arg1, arg2) {
@@ -64,6 +72,14 @@ export function GetCriteriaConfigByID(arg1) {
 
 export function GetCriteriaConfigs() {
   return window['go']['main']['App']['GetCriteriaConfigs']();
+}
+
+export function GetDriverByID(arg1) {
+  return window['go']['main']['App']['GetDriverByID'](arg1);
+}
+
+export function GetDrivers() {
+  return window['go']['main']['App']['GetDrivers']();
 }
 
 export function GetEntrants(arg1) {
@@ -132,6 +148,10 @@ export function SyncTournament(arg1) {
 
 export function UpdateCriteriaConfig(arg1, arg2) {
   return window['go']['main']['App']['UpdateCriteriaConfig'](arg1, arg2);
+}
+
+export function UpdateDriver(arg1) {
+  return window['go']['main']['App']['UpdateDriver'](arg1);
 }
 
 export function UpdateEntrant(arg1) {

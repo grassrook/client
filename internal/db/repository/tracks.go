@@ -23,12 +23,6 @@ type SQLiteTracksRepository struct {
 	DB *sql.DB
 }
 
-func NewSQLiteTracksRepository(db *sql.DB) *SQLiteTracksRepository {
-	return &SQLiteTracksRepository{
-		DB: db,
-	}
-}
-
 func (r *SQLiteTracksRepository) Create(ctx context.Context, t track.CreateTrackReq) error {
 	id, err := gonanoid.New()
 	if err != nil {

@@ -19,6 +19,12 @@
     "/tracks": wrap({
       asyncComponent: () => import("./components/pages/tracks.svelte"),
     }),
+    "/drivers": wrap({
+      asyncComponent: () => import("./components/pages/drivers.svelte"),
+    }),
+    "/drivers/:id": wrap({
+      asyncComponent: () => import("./components/pages/driver.svelte"),
+    }),
     "/criteria-configs": wrap({
       asyncComponent: () => import("./components/pages/criteria-config.svelte"),
     }),

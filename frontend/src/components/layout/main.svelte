@@ -86,19 +86,24 @@
               <TournamentsMenu />
 
               <Sidebar.MenuItem>
-                <Sidebar.MenuButton class="cursor-not-allowed opacity-45">
+                <Sidebar.MenuButton>
                   {#snippet child({ props })}
-                    <div {...props} aria-disabled="true">
+                    <a
+                      {...props}
+                      href="/drivers"
+                      use:link
+                      use:active={{
+                        path: "/drivers",
+                        className: "bg-sidebar-accent",
+                        inactiveClassName:
+                          "hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+                      }}
+                    >
                       <UsersRound aria-hidden="true" />
                       <span class="group-data-[collapsible=icon]:hidden"
                         >Drivers</span
                       >
-                      <span
-                        class="ml-auto text-[10px] uppercase group-data-[collapsible=icon]:hidden"
-                      >
-                        Soon
-                      </span>
-                    </div>
+                    </a>
                   {/snippet}
                 </Sidebar.MenuButton>
               </Sidebar.MenuItem>

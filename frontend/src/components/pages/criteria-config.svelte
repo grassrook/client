@@ -21,6 +21,7 @@
     GetCriteriaConfigs,
   } from "$wails/go/main/App";
   import { repository } from "$wails/go/models";
+  import { SlidersHorizontal } from "@lucide/svelte";
 
   const queryClient = useQueryClient();
 
@@ -140,13 +141,20 @@
   <div in:fade={{ duration: 300 }}>
     <div>
       <div
-        class="max-w-6xl mx-auto flex justify-between items-end px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+        class="max-w-6xl mx-auto flex justify-between items-center px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
       >
-        <div>
-          <h1 class="text-2xl font-semibold">Criteria Configs</h1>
-          <p class="text-muted-foreground mt-1 text-sm">
-            Manage the criteria used for judging.
-          </p>
+        <div class="flex items-start gap-3">
+          <div
+            class="flex size-11 items-center justify-center rounded-xl border bg-muted/50"
+          >
+            <SlidersHorizontal class="size-5 text-muted-foreground" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-semibold">Criteria Configs</h1>
+            <p class="text-muted-foreground mt-1 text-sm">
+              Manage the criteria used for judging.
+            </p>
+          </div>
         </div>
         <Button
           onclick={() => {

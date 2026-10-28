@@ -12,7 +12,6 @@
   import * as AlertDialog from "$src/components/ui/alert-dialog";
   import { Badge } from "$src/components/ui/badge";
   import { Button } from "$src/components/ui/button";
-  import * as Card from "$src/components/ui/card";
   import * as DropdownMenu from "$src/components/ui/dropdown-menu";
   import { Separator } from "$src/components/ui/separator";
   import * as Table from "$src/components/ui/table";
@@ -181,103 +180,102 @@
         </p>
       {:else}
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card.Root class="">
-            <Card.Content>
-              <Table.Root>
-                <Table.Header>
+          <div class="overflow-x-auto rounded-lg border">
+            <Table.Root>
+              <Table.Header class="bg-muted/50">
+                <Table.Row class="hover:bg-transparent">
+                  <Table.Head class="w-50">Name</Table.Head>
+                  <Table.Head>Categories</Table.Head>
+                  <Table.Head class="w-50 text-right">Actions</Table.Head>
+                </Table.Row>
+              </Table.Header>
+
+              <Table.Body>
+                {#each configsQuery.data ?? [] as config (config.id)}
                   <Table.Row>
-                    <Table.Head class="w-50">Name</Table.Head>
-                    <Table.Head>Categories</Table.Head>
-                    <Table.Head class="w-50 text-right">Actions</Table.Head>
+                    <Table.Cell class="font-medium">
+                      {config.name}
+                    </Table.Cell>
+
+                    <Table.Cell>
+                      <div class="flex flex-wrap gap-2">
+                        {#each [config.categories.common, config.categories.lead, config.categories.chase] as category, idx (idx)}
+                          <Badge variant="secondary">
+                            {category.label} · {Math.round(
+                              category.tags.reduce(
+                                (total, tag) =>
+                                  total +
+                                  (tag.type !== "deduction"
+                                    ? (tag.max ?? 0)
+                                    : 0),
+                                0,
+                              ),
+                            )}
+                          </Badge>
+                        {/each}
+                      </div>
+                    </Table.Cell>
+
+                    <Table.Cell class="text-right">
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger>
+                          {#snippet child({ props })}
+                            <Button
+                              {...props}
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Open actions menu"
+                            >
+                              <Ellipsis class="size-4" />
+                            </Button>
+                          {/snippet}
+                        </DropdownMenu.Trigger>
+
+                        <DropdownMenu.Content align="end">
+                          <DropdownMenu.Item
+                            onclick={() => exportConfig(config)}
+                          >
+                            Export to JSON
+                          </DropdownMenu.Item>
+
+                          <DropdownMenu.Item
+                            onclick={() => openUpdateDialog(config)}
+                          >
+                            Edit
+                          </DropdownMenu.Item>
+
+                          <DropdownMenu.Item
+                            onclick={() => copyMutation.mutate(config.id)}
+                          >
+                            Copy
+                          </DropdownMenu.Item>
+
+                          <DropdownMenu.Separator />
+
+                          <DropdownMenu.Item
+                            variant="destructive"
+                            onclick={() => deleteConfig(config)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            Delete
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Root>
+                    </Table.Cell>
                   </Table.Row>
-                </Table.Header>
-
-                <Table.Body>
-                  {#each configsQuery.data ?? [] as config (config.id)}
-                    <Table.Row>
-                      <Table.Cell class="font-medium">
-                        {config.name}
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        <div class="flex flex-wrap gap-2">
-                          {#each [config.categories.common, config.categories.lead, config.categories.chase] as category, idx (idx)}
-                            <Badge variant="secondary">
-                              {category.label} · {Math.round(
-                                category.tags.reduce(
-                                  (total, tag) =>
-                                    total +
-                                    (tag.type !== "deduction"
-                                      ? (tag.max ?? 0)
-                                      : 0),
-                                  0,
-                                ),
-                              )}
-                            </Badge>
-                          {/each}
-                        </div>
-                      </Table.Cell>
-
-                      <Table.Cell class="text-right">
-                        <DropdownMenu.Root>
-                          <DropdownMenu.Trigger>
-                            {#snippet child({ props })}
-                              <Button
-                                {...props}
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Open actions menu"
-                              >
-                                <Ellipsis class="size-4" />
-                              </Button>
-                            {/snippet}
-                          </DropdownMenu.Trigger>
-
-                          <DropdownMenu.Content align="end">
-                            <DropdownMenu.Item
-                              onclick={() => exportConfig(config)}
-                            >
-                              Export to JSON
-                            </DropdownMenu.Item>
-                            <DropdownMenu.Item
-                              onclick={() => openUpdateDialog(config)}
-                            >
-                              Edit
-                            </DropdownMenu.Item>
-
-                            <DropdownMenu.Item
-                              onclick={() => copyMutation.mutate(config.id)}
-                            >
-                              Copy
-                            </DropdownMenu.Item>
-
-                            <DropdownMenu.Separator />
-
-                            <DropdownMenu.Item
-                              variant="destructive"
-                              onclick={() => deleteConfig(config)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              Delete
-                            </DropdownMenu.Item>
-                          </DropdownMenu.Content>
-                        </DropdownMenu.Root>
-                      </Table.Cell>
-                    </Table.Row>
-                  {:else}
-                    <Table.Row>
-                      <Table.Cell
-                        colspan={3}
-                        class="text-muted-foreground h-24 text-center"
-                      >
-                        No criteria configs yet.
-                      </Table.Cell>
-                    </Table.Row>
-                  {/each}
-                </Table.Body>
-              </Table.Root>
-            </Card.Content>
-          </Card.Root>
+                {:else}
+                  <Table.Row>
+                    <Table.Cell
+                      colspan={3}
+                      class="h-24 text-center text-muted-foreground"
+                    >
+                      No criteria configs yet.
+                    </Table.Cell>
+                  </Table.Row>
+                {/each}
+              </Table.Body>
+            </Table.Root>
+          </div>
         </div>
       {/if}
     </div>

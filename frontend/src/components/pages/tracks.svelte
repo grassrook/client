@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MapPin } from "@lucide/svelte";
   import {
     createMutation,
     createQuery,
@@ -16,9 +17,11 @@
   import * as AlertDialog from "../ui/alert-dialog";
   import Button from "../ui/button/button.svelte";
   import * as Dialog from "../ui/dialog";
+  import * as Empty from "../ui/empty";
   import { Input } from "../ui/input";
   import { Label } from "../ui/label";
   import Separator from "../ui/separator/separator.svelte";
+  import * as Table from "../ui/table";
 
   type Track = {
     id: string;
@@ -166,58 +169,72 @@
           Retry
         </button>
       </div>
-    {:else if (tracksQuery.data ?? []).length === 0}
-      <div class="rounded-lg border border-dashed p-10 text-center">
-        <h2 class="font-medium">No tracks yet</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Create a track to get started.
-        </p>
-        <div class="mt-4">
-          <Button onclick={openCreateDialog}>Create track</Button>
-        </div>
-      </div>
     {:else}
       <div class="overflow-x-auto rounded-lg border">
-        <table class="w-full text-left text-sm">
-          <thead class="bg-muted/50 text-muted-foreground">
-            <tr>
-              <th class="px-4 py-3 font-medium">Name</th>
-              <th class="px-4 py-3 font-medium">Created</th>
-              <th class="px-4 py-3 font-medium">Last updated</th>
-              <th class="px-4 py-3 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
+        <Table.Root>
+          <Table.Header class="bg-muted/50">
+            <Table.Row class="hover:bg-transparent">
+              <Table.Head>Name</Table.Head>
+              <Table.Head>Created</Table.Head>
+              <Table.Head>Last updated</Table.Head>
+              <Table.Head class="text-right">Actions</Table.Head>
+            </Table.Row>
+          </Table.Header>
 
-          <tbody>
-            {#each tracksQuery.data ?? [] as track (track.id)}
-              <tr class="border-t">
-                <td class="px-4 py-3 font-medium">{track.name}</td>
-                <td class="px-4 py-3 text-muted-foreground">
-                  {formatDate(track.createdAt)}
-                </td>
-                <td class="px-4 py-3 text-muted-foreground">
-                  {formatDate(track.updatedAt)}
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onclick={() => openEditDialog(track)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onclick={() => openDeleteDialog(track)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+          <Table.Body>
+            {#if (tracksQuery.data ?? []).length === 0}
+              <Table.Row>
+                <Table.Cell colspan={4} class="p-0">
+                  <Empty.Root class="py-12">
+                    <Empty.Header>
+                      <Empty.Media variant="icon">
+                        <MapPin />
+                      </Empty.Media>
+                      <Empty.Title>No tracks yet</Empty.Title>
+                      <Empty.Description>
+                        Add a track to start managing the locations used for
+                        judging.
+                      </Empty.Description>
+                    </Empty.Header>
+                    <Empty.Content>
+                      <Button onclick={openCreateDialog}>+ New Track</Button>
+                    </Empty.Content>
+                  </Empty.Root>
+                </Table.Cell>
+              </Table.Row>
+            {:else}
+              {#each tracksQuery.data ?? [] as track (track.id)}
+                <Table.Row>
+                  <Table.Cell class="font-medium">
+                    {track.name}
+                  </Table.Cell>
+                  <Table.Cell class="text-muted-foreground">
+                    {formatDate(track.createdAt)}
+                  </Table.Cell>
+                  <Table.Cell class="text-muted-foreground">
+                    {formatDate(track.updatedAt)}
+                  </Table.Cell>
+                  <Table.Cell class="text-right">
+                    <div class="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onclick={() => openEditDialog(track)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onclick={() => openDeleteDialog(track)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </Table.Cell>
+                </Table.Row>
+              {/each}
+            {/if}
+          </Table.Body>
+        </Table.Root>
       </div>
     {/if}
   </div>
@@ -234,6 +251,7 @@
       <Dialog.Title>
         {editingTrack ? "Edit track" : "Create track"}
       </Dialog.Title>
+
       <Dialog.Description>
         {editingTrack
           ? "Update the track name."
@@ -266,6 +284,7 @@
         >
           Cancel
         </Button>
+
         <Button
           type="submit"
           disabled={createTrackMutation.isPending || updateMutation.isPending}
@@ -293,6 +312,7 @@
   <AlertDialog.Content>
     <AlertDialog.Header>
       <AlertDialog.Title>Delete track?</AlertDialog.Title>
+
       <AlertDialog.Description>
         Are you sure you want to delete
         <strong class="text-foreground">{selectedTrack?.name}</strong>? This
@@ -308,6 +328,7 @@
       <AlertDialog.Cancel disabled={deleteMutation.isPending}>
         Cancel
       </AlertDialog.Cancel>
+
       <AlertDialog.Action
         class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         disabled={deleteMutation.isPending}

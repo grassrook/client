@@ -27,13 +27,17 @@
   import * as Popover from "$src/components/ui/popover";
   import * as Select from "$src/components/ui/select";
   import Switch from "$src/components/ui/switch/switch.svelte";
-  import { CreateTournament, GetCriteriaConfigs } from "$wails/go/main/App";
+  import {
+    CreateTournament,
+    GetCriteriaConfigs,
+    GetTracks,
+  } from "$wails/go/main/App";
 
   let { open = $bindable(false) } = $props();
   let error = $state("");
   let name = $state("");
   let size = $state(2);
-  let trackName = $state("");
+  let trackID = $state("");
 
   let randomizeQualifyingOrder = $state(true);
   let criteriaConfigID = $state<number | undefined>(undefined);
@@ -50,19 +54,24 @@
     queryFn: () => GetCriteriaConfigs(),
   }));
 
+  const tracksQuery = createQuery(() => ({
+    queryKey: ["tracks"],
+    queryFn: () => GetTracks(),
+  }));
+
   const createTournamentMutation = createMutation(() => ({
     mutationFn: async ({
       name,
       size,
       startingDate,
-      track,
+      trackID,
       randomizeQualifyingOrder,
       criteriaConfigID,
     }: {
       name: string;
       size: number;
       startingDate: string;
-      track: string;
+      trackID: string;
       randomizeQualifyingOrder: boolean;
       criteriaConfigID: number;
     }) => {
@@ -70,7 +79,7 @@
         name,
         size,
         startingDate,
-        track,
+        trackID,
         randomizeQualifyingOrder,
         criteriaConfigID,
         qualifyingRounds: Number(qualifyingRounds),
@@ -84,7 +93,7 @@
       name = "";
       selectedDate = undefined;
       startingTime = "12:00";
-      trackName = "";
+      trackID = "";
       error = "";
       criteriaConfigID = undefined;
       qualifyingRounds = "1";
@@ -110,7 +119,7 @@
 
     const startingDate = `${selectedDate.toString()}T${startingTime}`;
 
-    if (!trackName.trim()) {
+    if (!trackID) {
       error = "Track is required.";
       return;
     }
@@ -124,7 +133,7 @@
       name: name.trim(),
       size,
       startingDate,
-      track: trackName.trim(),
+      trackID,
       randomizeQualifyingOrder,
       criteriaConfigID,
     });
@@ -232,11 +241,39 @@
       </div>
       <div class="space-y-2">
         <Label for="track">Track</Label>
-        <Input
-          id="track"
-          placeholder="Enter or select a track"
-          bind:value={trackName}
-        />
+
+        <Select.Root
+          type="single"
+          value={trackID}
+          onValueChange={(value) => {
+            trackID = value;
+          }}
+        >
+          <Select.Trigger id="track" class="w-full">
+            {#if tracksQuery.isPending}
+              Loading tracks...
+            {:else}
+              {tracksQuery.data?.find((track) => track.id === trackID)?.name ??
+                "Select a track"}
+            {/if}
+          </Select.Trigger>
+
+          <Select.Content>
+            {#each tracksQuery.data ?? [] as track (track.id)}
+              <Select.Item value={track.id}>
+                {track.name}
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+
+        {#if tracksQuery.isError}
+          <p class="text-sm text-destructive">Failed to load tracks.</p>
+        {:else if !tracksQuery.isPending && !tracksQuery.data?.length}
+          <p class="text-sm text-muted-foreground">
+            No tracks found. Create a track before creating a tournament.
+          </p>
+        {/if}
       </div>
       <div class="space-y-2 w-full">
         <Label for="qualifyingRounds">Qualifying Rounds</Label>

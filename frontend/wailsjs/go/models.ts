@@ -354,7 +354,7 @@ export namespace tournament {
 	    name: string;
 	    size: number;
 	    startingDate: string;
-	    track: string;
+	    trackID: string;
 	    criteriaConfigID: number;
 	    qualifyingRounds: number;
 	    randomizeQualifyingOrder: boolean;
@@ -368,7 +368,7 @@ export namespace tournament {
 	        this.name = source["name"];
 	        this.size = source["size"];
 	        this.startingDate = source["startingDate"];
-	        this.track = source["track"];
+	        this.trackID = source["trackID"];
 	        this.criteriaConfigID = source["criteriaConfigID"];
 	        this.qualifyingRounds = source["qualifyingRounds"];
 	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];

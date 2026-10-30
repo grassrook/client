@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MapPin, MapPinned } from "@lucide/svelte";
+  import { MapPin } from "@lucide/svelte";
   import {
     createMutation,
     createQuery,
@@ -18,7 +18,6 @@
   import * as AlertDialog from "../ui/alert-dialog";
   import Button from "../ui/button/button.svelte";
   import * as Dialog from "../ui/dialog";
-  import * as Empty from "../ui/empty";
   import { Input } from "../ui/input";
   import { Label } from "../ui/label";
   import Separator from "../ui/separator/separator.svelte";
@@ -44,6 +43,7 @@
   let selectedTrack = $state<Track | null>(null);
   let name = $state("");
   let errorMessage = $state("");
+  let mounted = $state(false);
 
   const refreshTracks = async () => {
     await queryClient.invalidateQueries({ queryKey: ["tracks"] });
@@ -142,7 +142,6 @@
   function formatDate(timestamp: number) {
     return new Date(timestamp * 1000).toLocaleDateString();
   }
-  let mounted = $state(false);
 
   onMount(() => {
     mounted = true;
@@ -151,112 +150,161 @@
 
 {#if mounted}
   <div in:fade={{ duration: 300 }}>
-    <div
-      class="mx-auto flex max-w-6xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
-    >
-      <div class="flex items-start gap-3">
-        <div
-          class="flex size-11 items-center justify-center rounded-xl border bg-muted/50"
-        >
-          <MapPinned class="size-5 text-muted-foreground" />
-        </div>
+    <div class="min-h-full">
+      <!-- Page heading -->
+      <header
+        class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-8 sm:px-6 lg:px-8"
+      >
         <div>
-          <h1 class="text-2xl font-semibold">Tracks</h1>
+          <h1 class="text-2xl font-semibold tracking-tight">Tracks</h1>
           <p class="mt-1 text-sm text-muted-foreground">
             Manage the tracks used for judging.
           </p>
         </div>
-      </div>
 
-      <Button
-        class="bg-blue-600 text-white hover:bg-blue-700"
-        onclick={openCreateDialog}>+ New Track</Button
-      >
-    </div>
+        <Button
+          class="bg-blue-600 text-white hover:bg-blue-700"
+          onclick={openCreateDialog}
+        >
+          + New Track
+        </Button>
+      </header>
 
-    <Separator />
+      <Separator />
 
-    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      {#if tracksQuery.isPending}
-        <p class="text-sm text-muted-foreground">Loading tracks...</p>
-      {:else if tracksQuery.isError}
-        <div class="text-sm text-destructive">
-          Failed to load tracks.
-          <button class="ml-2 underline" onclick={() => tracksQuery.refetch()}>
-            Retry
-          </button>
-        </div>
-      {:else}
-        <div class="overflow-x-auto rounded-lg border">
-          <Table.Root>
-            <Table.Header class="bg-muted/50">
-              <Table.Row class="hover:bg-transparent">
-                <Table.Head>Name</Table.Head>
-                <Table.Head>Created</Table.Head>
-                <Table.Head>Last updated</Table.Head>
-                <Table.Head class="text-right">Actions</Table.Head>
-              </Table.Row>
-            </Table.Header>
+      <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <section>
+          <!-- Directory heading -->
+          <div class="flex items-end justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-semibold">Track directory</h2>
 
-            <Table.Body>
-              {#if (tracksQuery.data ?? []).length === 0}
-                <Table.Row>
-                  <Table.Cell colspan={4} class="p-0">
-                    <Empty.Root class="py-12">
-                      <Empty.Header>
-                        <Empty.Media variant="icon">
-                          <MapPin />
-                        </Empty.Media>
-                        <Empty.Title>No tracks yet</Empty.Title>
-                        <Empty.Description>
-                          Add a track to start managing the locations used for
-                          judging.
-                        </Empty.Description>
-                      </Empty.Header>
-                      <Empty.Content>
-                        <Button onclick={openCreateDialog}>+ New Track</Button>
-                      </Empty.Content>
-                    </Empty.Root>
-                  </Table.Cell>
-                </Table.Row>
-              {:else}
-                {#each tracksQuery.data ?? [] as track (track.id)}
-                  <Table.Row>
-                    <Table.Cell class="font-medium">
-                      {track.name}
-                    </Table.Cell>
-                    <Table.Cell class="text-muted-foreground">
-                      {formatDate(track.createdAt)}
-                    </Table.Cell>
-                    <Table.Cell class="text-muted-foreground">
-                      {formatDate(track.updatedAt)}
-                    </Table.Cell>
-                    <Table.Cell class="text-right">
-                      <div class="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          onclick={() => openEditDialog(track)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onclick={() => openDeleteDialog(track)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </Table.Cell>
-                  </Table.Row>
+                {#if !tracksQuery.isPending && !tracksQuery.isError}
+                  <span
+                    class="rounded-md border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                  >
+                    {(tracksQuery.data ?? []).length}
+                  </span>
+                {/if}
+              </div>
+
+              <p class="mt-1 text-sm text-muted-foreground">
+                View and manage your registered tracks.
+              </p>
+            </div>
+          </div>
+
+          <!-- Track table -->
+          <div class="mt-6">
+            {#if tracksQuery.isPending}
+              <div class="space-y-5 py-5">
+                {#each [1, 2, 3] as item (item)}
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="size-10 animate-pulse rounded-full bg-muted"
+                    ></div>
+                    <div class="flex-1 space-y-2">
+                      <div
+                        class="h-4 w-36 animate-pulse rounded bg-muted"
+                      ></div>
+                      <div
+                        class="h-3 w-56 max-w-full animate-pulse rounded bg-muted"
+                      ></div>
+                    </div>
+                  </div>
                 {/each}
-              {/if}
-            </Table.Body>
-          </Table.Root>
-        </div>
-      {/if}
+              </div>
+            {:else if tracksQuery.isError}
+              <div class="flex flex-col items-center gap-3 py-16 text-center">
+                <p class="font-medium">Couldn't load tracks</p>
+                <p class="text-sm text-muted-foreground">
+                  Something went wrong while fetching the track directory.
+                </p>
+                <Button variant="outline" onclick={() => tracksQuery.refetch()}>
+                  Try again
+                </Button>
+              </div>
+            {:else if !(tracksQuery.data ?? []).length}
+              <div
+                class="flex flex-col items-center border-y py-16 text-center"
+              >
+                <MapPin class="mb-4 size-9 text-muted-foreground" />
+                <h3 class="font-medium">No tracks yet</h3>
+                <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+                  Add a track to start managing the locations used for judging.
+                </p>
+                <Button class="mt-5" onclick={openCreateDialog}>
+                  + New Track
+                </Button>
+              </div>
+            {:else}
+              <div class="overflow-x-auto border-y">
+                <Table.Root>
+                  <Table.Header>
+                    <Table.Row class="hover:bg-transparent">
+                      <Table.Head class="h-11 min-w-64 pl-4">Track</Table.Head>
+                      <Table.Head class="h-11 min-w-32">Created</Table.Head>
+                      <Table.Head class="h-11 min-w-32">
+                        Last updated
+                      </Table.Head>
+                      <Table.Head class="h-11 min-w-40 pr-4 text-right">
+                        Actions
+                      </Table.Head>
+                    </Table.Row>
+                  </Table.Header>
+
+                  <Table.Body>
+                    {#each tracksQuery.data ?? [] as track (track.id)}
+                      <Table.Row class="transition-colors">
+                        <Table.Cell class="py-4 pl-4">
+                          <span class="font-medium">{track.name}</span>
+                        </Table.Cell>
+
+                        <Table.Cell class="text-sm text-muted-foreground">
+                          {formatDate(track.createdAt)}
+                        </Table.Cell>
+
+                        <Table.Cell class="text-sm text-muted-foreground">
+                          {formatDate(track.updatedAt)}
+                        </Table.Cell>
+
+                        <Table.Cell class="pr-4">
+                          <div class="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onclick={() => openEditDialog(track)}
+                            >
+                              Edit
+                            </Button>
+
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onclick={() => openDeleteDialog(track)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </Table.Cell>
+                      </Table.Row>
+                    {/each}
+                  </Table.Body>
+                </Table.Root>
+              </div>
+
+              <div class="py-4 text-xs text-muted-foreground">
+                Showing {(tracksQuery.data ?? []).length} tracks
+              </div>
+            {/if}
+          </div>
+        </section>
+      </main>
     </div>
   </div>
 
+  <!-- Create / Edit dialog -->
   <Dialog.Root
     bind:open={dialogOpen}
     onOpenChange={(open) => {
@@ -317,6 +365,7 @@
     </Dialog.Content>
   </Dialog.Root>
 
+  <!-- Delete confirmation -->
   <AlertDialog.Root
     bind:open={deleteDialogOpen}
     onOpenChange={(open) => {

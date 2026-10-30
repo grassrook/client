@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, UserRound, UsersRound } from "@lucide/svelte";
+  import { Plus, Search, UserRound, UsersRound, X } from "@lucide/svelte";
   import {
     createMutation,
     createQuery,
@@ -37,6 +37,21 @@
   let name = $state("");
   let description = $state("");
   let errorMessage = $state("");
+  let searchQuery = $state("");
+  let mounted = $state(false);
+
+  const filteredDrivers = $derived.by(() => {
+    const drivers = driversQuery.data ?? [];
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) return drivers;
+
+    return drivers.filter((driver) =>
+      [driver.name, driver.description, driver.id].some((value) =>
+        value.toLowerCase().includes(query),
+      ),
+    );
+  });
 
   const createDriverMutation = createMutation(() => ({
     mutationFn: (input: { name: string; description: string }) =>
@@ -87,7 +102,6 @@
   function formatDate(timestamp: number) {
     return new Date(timestamp * 1000).toLocaleDateString();
   }
-  let mounted = $state(false);
 
   onMount(() => {
     mounted = true;
@@ -97,22 +111,15 @@
 {#if mounted}
   <div in:fade={{ duration: 300 }}>
     <div class="min-h-full">
-      <div
-        class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+      <!-- Page heading -->
+      <header
+        class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-8 sm:px-6 lg:px-8"
       >
-        <div class="flex items-start gap-3">
-          <div
-            class="flex size-11 items-center justify-center rounded-xl border bg-muted/50"
-          >
-            <UsersRound class="size-5 text-muted-foreground" />
-          </div>
-
-          <div>
-            <h1 class="text-2xl font-semibold tracking-tight">Drivers</h1>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Manage your drivers and their profiles.
-            </p>
-          </div>
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Drivers</h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Manage your drivers and their registered information.
+          </p>
         </div>
 
         <Button
@@ -120,134 +127,211 @@
           onclick={openCreateDialog}
         >
           <Plus class="mr-2 size-4" />
-          New driver
+          Add driver
         </Button>
-      </div>
+      </header>
 
       <Separator />
 
-      <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div class="overflow-hidden rounded-xl border">
-          <div class="flex items-center justify-between border-b px-5 py-4">
+      <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <!-- Directory heading and search -->
+        <section>
+          <div
+            class="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"
+          >
             <div>
-              <h2 class="font-medium">All drivers</h2>
-              <p class="mt-1 text-sm text-muted-foreground">
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-semibold">Driver directory</h2>
+
                 {#if !driversQuery.isPending && !driversQuery.isError}
-                  {(driversQuery.data ?? []).length}
-                  {(driversQuery.data ?? []).length === 1
-                    ? " driver"
-                    : " drivers"} registered
-                {:else}
-                  Driver directory
+                  <span
+                    class="rounded-md border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                  >
+                    {(driversQuery.data ?? []).length}
+                  </span>
                 {/if}
+              </div>
+
+              <p class="mt-1 text-sm text-muted-foreground">
+                Browse and search through your registered drivers.
               </p>
+            </div>
+
+            <div class="relative w-full sm:max-w-xs">
+              <Search
+                class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+
+              <Input
+                bind:value={searchQuery}
+                placeholder="Search by name or ID..."
+                class="h-10 pl-9 pr-9"
+              />
+
+              {#if searchQuery}
+                <button
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  onclick={() => (searchQuery = "")}
+                  aria-label="Clear search"
+                >
+                  <X class="size-4" />
+                </button>
+              {/if}
             </div>
           </div>
 
-          {#if driversQuery.isPending}
-            <div class="space-y-4 p-5">
-              {#each [1, 2, 3] as item (item)}
-                <div class="flex items-center gap-3">
-                  <div
-                    class="size-10 animate-pulse rounded-full bg-muted"
-                  ></div>
-                  <div class="flex-1 space-y-2">
-                    <div class="h-4 w-36 animate-pulse rounded bg-muted"></div>
+          <!-- Driver table -->
+          <div class="mt-6">
+            {#if driversQuery.isPending}
+              <div class="space-y-5 py-5">
+                {#each [1, 2, 3] as item (item)}
+                  <div class="flex items-center gap-4">
                     <div
-                      class="h-3 w-56 max-w-full animate-pulse rounded bg-muted"
+                      class="size-10 animate-pulse rounded-full bg-muted"
                     ></div>
+                    <div class="flex-1 space-y-2">
+                      <div
+                        class="h-4 w-36 animate-pulse rounded bg-muted"
+                      ></div>
+                      <div
+                        class="h-3 w-56 max-w-full animate-pulse rounded bg-muted"
+                      ></div>
+                    </div>
                   </div>
-                </div>
-              {/each}
-            </div>
-          {:else if driversQuery.isError}
-            <div
-              class="flex flex-col items-center gap-3 px-6 py-12 text-center"
-            >
-              <p class="font-medium">Couldn't load drivers</p>
-              <p class="text-sm text-muted-foreground">
-                Something went wrong while fetching the driver directory.
-              </p>
-              <Button variant="outline" onclick={() => driversQuery.refetch()}>
-                Try again
-              </Button>
-            </div>
-          {:else if !(driversQuery.data ?? []).length}
-            <div class="flex flex-col items-center px-6 py-14 text-center">
-              <div
-                class="mb-4 flex size-14 items-center justify-center rounded-full bg-muted"
-              >
-                <UsersRound class="size-6 text-muted-foreground" />
+                {/each}
               </div>
-              <h3 class="font-semibold">No drivers yet</h3>
-              <p class="mt-1 max-w-sm text-sm text-muted-foreground">
-                Get started by adding your first driver to the directory.
-              </p>
-              <Button class="mt-5" onclick={openCreateDialog}>
-                <Plus class="mr-2 size-4" />
-                Create your first driver
-              </Button>
-            </div>
-          {:else}
-            <div class="overflow-x-auto">
-              <Table.Root>
-                <Table.Header>
-                  <Table.Row class="bg-muted/30 hover:bg-muted/30">
-                    <Table.Head class="min-w-64">Driver</Table.Head>
-                    <Table.Head class="min-w-64">Description</Table.Head>
-                    <Table.Head class="min-w-32">Date added</Table.Head>
-                  </Table.Row>
-                </Table.Header>
-
-                <Table.Body>
-                  {#each driversQuery.data ?? [] as driver (driver.id)}
-                    <Table.Row class="cursor-pointer transition-colors">
-                      <Table.Cell>
-                        <div class="flex items-center gap-3">
-                          <Avatar.Root class="size-10 border">
-                            <Avatar.Fallback
-                              class="bg-muted text-muted-foreground"
-                            >
-                              <UserRound class="size-5" />
-                            </Avatar.Fallback>
-                          </Avatar.Root>
-
-                          <div class="min-w-0">
-                            <a
-                              href={`/drivers/${driver.id}`}
-                              use:link
-                              class="truncate font-medium hover:underline"
-                            >
-                              {driver.name}
-                            </a>
-                            <p class="truncate text-xs text-muted-foreground">
-                              ID: {driver.id}
-                            </p>
-                          </div>
-                        </div>
-                      </Table.Cell>
-
-                      <Table.Cell>
-                        <p
-                          class="max-w-md truncate text-sm text-muted-foreground"
-                        >
-                          {driver.description || "No description provided"}
-                        </p>
-                      </Table.Cell>
-
-                      <Table.Cell class="text-sm text-muted-foreground">
-                        {formatDate(driver.createdAt)}
-                      </Table.Cell>
+            {:else if driversQuery.isError}
+              <div class="flex flex-col items-center gap-3 py-16 text-center">
+                <p class="font-medium">Couldn't load drivers</p>
+                <p class="text-sm text-muted-foreground">
+                  Something went wrong while fetching the driver directory.
+                </p>
+                <Button
+                  variant="outline"
+                  onclick={() => driversQuery.refetch()}
+                >
+                  Try again
+                </Button>
+              </div>
+            {:else if !(driversQuery.data ?? []).length}
+              <div
+                class="flex flex-col items-center border-y py-16 text-center"
+              >
+                <UsersRound class="mb-4 size-9 text-muted-foreground" />
+                <h3 class="font-medium">No drivers yet</h3>
+                <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+                  Add your first driver to start building your directory.
+                </p>
+                <Button class="mt-5" onclick={openCreateDialog}>
+                  <Plus class="mr-2 size-4" />
+                  Add your first driver
+                </Button>
+              </div>
+            {:else if !filteredDrivers.length}
+              <div
+                class="flex flex-col items-center border-y py-16 text-center"
+              >
+                <Search class="mb-4 size-8 text-muted-foreground" />
+                <h3 class="font-medium">No matching drivers</h3>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  No results found for "{searchQuery}".
+                </p>
+                <Button
+                  class="mt-4"
+                  variant="outline"
+                  size="sm"
+                  onclick={() => (searchQuery = "")}
+                >
+                  Clear search
+                </Button>
+              </div>
+            {:else}
+              <div class="overflow-x-auto border-y">
+                <Table.Root>
+                  <Table.Header>
+                    <Table.Row class="hover:bg-transparent">
+                      <Table.Head class="h-11 min-w-64 pl-4">Driver</Table.Head>
+                      <Table.Head class="h-11 min-w-64">Description</Table.Head>
+                      <Table.Head class="h-11 min-w-32 pr-4 text-right">
+                        Date added
+                      </Table.Head>
                     </Table.Row>
-                  {/each}
-                </Table.Body>
-              </Table.Root>
-            </div>
-          {/if}
-        </div>
-      </div>
+                  </Table.Header>
+
+                  <Table.Body>
+                    {#each filteredDrivers as driver (driver.id)}
+                      <Table.Row class="transition-colors">
+                        <Table.Cell class="py-4 pl-4">
+                          <div class="flex items-center gap-3">
+                            <Avatar.Root class="size-10 shrink-0 border">
+                              <Avatar.Fallback
+                                class="bg-muted text-muted-foreground"
+                              >
+                                <UserRound class="size-5" />
+                              </Avatar.Fallback>
+                            </Avatar.Root>
+
+                            <div class="min-w-0">
+                              <a
+                                href={`/drivers/${driver.id}`}
+                                use:link
+                                class="font-medium hover:underline"
+                              >
+                                {driver.name}
+                              </a>
+                              <p
+                                class="mt-0.5 truncate text-xs text-muted-foreground"
+                              >
+                                ID: {driver.id}
+                              </p>
+                            </div>
+                          </div>
+                        </Table.Cell>
+
+                        <Table.Cell>
+                          <p
+                            class="max-w-md truncate text-sm text-muted-foreground"
+                          >
+                            {driver.description || "No description provided"}
+                          </p>
+                        </Table.Cell>
+
+                        <Table.Cell
+                          class="pr-4 text-right text-sm text-muted-foreground"
+                        >
+                          {formatDate(driver.createdAt)}
+                        </Table.Cell>
+                      </Table.Row>
+                    {/each}
+                  </Table.Body>
+                </Table.Root>
+              </div>
+
+              <div
+                class="flex items-center justify-between py-4 text-xs text-muted-foreground"
+              >
+                <p>
+                  Showing {filteredDrivers.length} of {(driversQuery.data ?? [])
+                    .length} drivers
+                </p>
+
+                {#if searchQuery}
+                  <button
+                    class="transition-colors hover:text-foreground"
+                    onclick={() => (searchQuery = "")}
+                  >
+                    Clear filters
+                  </button>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </section>
+      </main>
     </div>
 
+    <!-- Create driver dialog -->
     <Dialog
       bind:open={dialogOpen}
       onOpenChange={(open) => {

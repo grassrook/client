@@ -23,7 +23,7 @@
       asyncComponent: () => import("./components/pages/drivers.svelte"),
     }),
     "/drivers/:id": wrap({
-      asyncComponent: () => import("./components/pages/driver.svelte"),
+      asyncComponent: () => import("./components/pages/driver-profile.svelte"),
     }),
     "/criteria-configs": wrap({
       asyncComponent: () => import("./components/pages/criteria-config.svelte"),

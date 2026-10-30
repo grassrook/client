@@ -143,7 +143,7 @@
 <Dialog bind:open>
   <DialogTrigger>
     {#snippet child({ props })}
-      <Button {...props}>
+      <Button class="bg-blue-600 text-white hover:bg-blue-700" {...props}>
         <Plus />
         New tournament
       </Button>

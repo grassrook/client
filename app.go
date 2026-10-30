@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"judginginternal/internal/config"
 	"judginginternal/internal/db"
 	"judginginternal/internal/db/repository"
+	"judginginternal/internal/models/car"
 	"judginginternal/internal/models/driver"
 	"judginginternal/internal/models/entrant"
 	"judginginternal/internal/models/participant"
@@ -14,8 +16,12 @@ import (
 	"judginginternal/internal/models/tournament"
 	tournamentactivitylog "judginginternal/internal/models/tournament_activity_log"
 	"judginginternal/internal/models/track"
+	"mime"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -31,10 +37,12 @@ type App struct {
 	driversRepo                repository.DriversRepository
 	matchesRepo                repository.MatchesRepository
 	bracketRepo                repository.BracketRepository
+	participantsRepo           repository.ParticipantsRepo
 	entrantsRepo               repository.EntrantsRepository
 	criteriaConfigRepo         repository.CriteriaConfigRepository
 	qualifyingScoresRepo       repository.QualfyingScoresRepository
 	tournamentActivityLogsRepo repository.TournamentActivityLogsRepository
+	registeredCarsRepo         repository.RegisteredCarsRepository
 }
 
 // NewApp creates a new App application struct
@@ -72,6 +80,10 @@ func (a *App) startup(ctx context.Context) {
 		ChallongeAPIKey: a.cfg.ChallongeApiKey,
 	}
 
+	a.participantsRepo = &repository.SQLiteParticipantsRepository{
+		DB: client,
+	}
+
 	a.entrantsRepo = &repository.SQLiteEntrantsRepository{
 		DB:              client,
 		ChallongeAPIKey: a.cfg.ChallongeApiKey,
@@ -89,7 +101,49 @@ func (a *App) startup(ctx context.Context) {
 		DB: client,
 	}
 
+	a.registeredCarsRepo = &repository.SQLiteRegisteredCarsRepository{
+		DB:        client,
+		MediaPath: path.Join(a.cfg.Workspace, "media"),
+	}
+
 	runtime.LogInfo(a.ctx, "Database connection established and repositories initialized")
+}
+
+func (a *App) GetCarPhoto(photoPath string) (string, error) {
+	if photoPath == "" {
+		return "", fmt.Errorf("photo path is empty")
+	}
+
+	root, err := filepath.Abs(path.Join(a.cfg.Workspace, "media"))
+	if err != nil {
+		return "", fmt.Errorf("resolve media directory: %w", err)
+	}
+
+	fullPath := filepath.Join(root, filepath.Clean(photoPath))
+
+	// Ensure the requested file is inside MediaPath.
+	rel, err := filepath.Rel(root, fullPath)
+	if err != nil {
+		return "", fmt.Errorf("resolve photo path: %w", err)
+	}
+
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("invalid photo path")
+	}
+
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("read photo: %w", err)
+	}
+
+	contentType := mime.TypeByExtension(filepath.Ext(fullPath))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(data)
+
+	return fmt.Sprintf("data:%s;base64,%s", contentType, encoded), nil
 }
 
 func (a *App) HasChallongeAPIKey() bool {
@@ -271,6 +325,48 @@ func (a *App) UpdateDriver(req driver.UpdateDriverReq) error {
 
 func (a *App) DeleteDriver(id string) error {
 	return a.driversRepo.Delete(a.ctx, id)
+}
+
+// -- Cars --
+
+func (a *App) UpdateParticipantCar(participantID, registeredCarID string) error {
+	return a.participantsRepo.UpdateRegisteredCar(a.ctx, participantID, registeredCarID)
+}
+
+func (a *App) CreateRegisteredCar(car car.CreateRegisteredCar) error {
+	return a.registeredCarsRepo.Create(a.ctx, car)
+}
+
+func (a *App) GetCarByID(id string) (car.RegisteredCar, error) {
+	c, err := a.registeredCarsRepo.GetByID(a.ctx, id)
+	if err != nil {
+		return car.RegisteredCar{}, err
+	}
+	return c, nil
+}
+
+func (a *App) GetDriverCarList(driverID string) ([]car.RegisteredCar, error) {
+	list, err := a.registeredCarsRepo.ListByDriverID(a.ctx, driverID)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func (a *App) ListCarMakes() ([]car.CarMake, error) {
+	l, err := a.registeredCarsRepo.ListCarMakes(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+func (a *App) DeleteCar(id string) error {
+	return a.registeredCarsRepo.Delete(a.ctx, id)
+}
+
+func (a *App) UpdateCar(id string, car car.UpdateRegisteredCar) error {
+	return a.registeredCarsRepo.Update(a.ctx, id, car)
 }
 
 // -- Matches --

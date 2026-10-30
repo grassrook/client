@@ -26,6 +26,10 @@ export function CreateDriver(arg1) {
   return window['go']['main']['App']['CreateDriver'](arg1);
 }
 
+export function CreateRegisteredCar(arg1) {
+  return window['go']['main']['App']['CreateRegisteredCar'](arg1);
+}
+
 export function CreateTournament(arg1) {
   return window['go']['main']['App']['CreateTournament'](arg1);
 }
@@ -36,6 +40,10 @@ export function CreateTournamentActivityLog(arg1) {
 
 export function CreateTrack(arg1) {
   return window['go']['main']['App']['CreateTrack'](arg1);
+}
+
+export function DeleteCar(arg1) {
+  return window['go']['main']['App']['DeleteCar'](arg1);
 }
 
 export function DeleteCriteriaConfig(arg1) {
@@ -66,6 +74,14 @@ export function GetAllQualifyingScores(arg1) {
   return window['go']['main']['App']['GetAllQualifyingScores'](arg1);
 }
 
+export function GetCarByID(arg1) {
+  return window['go']['main']['App']['GetCarByID'](arg1);
+}
+
+export function GetCarPhoto(arg1) {
+  return window['go']['main']['App']['GetCarPhoto'](arg1);
+}
+
 export function GetCriteriaConfigByID(arg1) {
   return window['go']['main']['App']['GetCriteriaConfigByID'](arg1);
 }
@@ -76,6 +92,10 @@ export function GetCriteriaConfigs() {
 
 export function GetDriverByID(arg1) {
   return window['go']['main']['App']['GetDriverByID'](arg1);
+}
+
+export function GetDriverCarList(arg1) {
+  return window['go']['main']['App']['GetDriverCarList'](arg1);
 }
 
 export function GetDrivers() {
@@ -130,6 +150,10 @@ export function InsertBulkParticipant(arg1, arg2) {
   return window['go']['main']['App']['InsertBulkParticipant'](arg1, arg2);
 }
 
+export function ListCarMakes() {
+  return window['go']['main']['App']['ListCarMakes']();
+}
+
 export function ResetBattle(arg1, arg2) {
   return window['go']['main']['App']['ResetBattle'](arg1, arg2);
 }
@@ -144,6 +168,10 @@ export function StartTournament(arg1) {
 
 export function SyncTournament(arg1) {
   return window['go']['main']['App']['SyncTournament'](arg1);
+}
+
+export function UpdateCar(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCar'](arg1, arg2);
 }
 
 export function UpdateCriteriaConfig(arg1, arg2) {
@@ -164,6 +192,10 @@ export function UpdateMatchSingleParticipant(arg1) {
 
 export function UpdateNote(arg1, arg2) {
   return window['go']['main']['App']['UpdateNote'](arg1, arg2);
+}
+
+export function UpdateParticipantCar(arg1, arg2) {
+  return window['go']['main']['App']['UpdateParticipantCar'](arg1, arg2);
 }
 
 export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {

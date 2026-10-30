@@ -9,10 +9,22 @@ CREATE TABLE drivers (
 ALTER TABLE participants
 ADD COLUMN driver_id TEXT REFERENCES drivers(id) ON DELETE SET NULL;
 
+ALTER TABLE participants
+ADD COLUMN registered_car_id TEXT REFERENCES registered_cars(id) ON DELETE SET NULL;
+
 CREATE TABLE car_makes (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL
 );
+
+INSERT INTO car_makes (id, name)
+VALUES 
+    (1, 'Nissan'),
+    (2, 'Toyota'),
+    (3, 'Chevrolet'),
+    (4, 'Ford'),
+    (5, 'BMW'),
+    (6, 'Mazda');
 
 CREATE TABLE registered_cars (
     id TEXT PRIMARY KEY NOT NULL,

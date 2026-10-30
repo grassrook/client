@@ -38,7 +38,8 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 			p.name,
 			e.status,
 			e.score,
-			p.driver_id
+			p.driver_id,
+			p.registered_car_id
 		FROM entrants e
 		INNER JOIN participants p ON p.id = e.participant_id
 		WHERE e.tournament_id = ?
@@ -54,6 +55,7 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 		var e entrant.Entrant
 		var score sql.NullFloat64
 		var driverID sql.NullString
+		var registeredCarID sql.NullString
 
 		if err := rows.Scan(
 			&e.ID,
@@ -62,6 +64,7 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 			&e.Status,
 			&score,
 			&driverID,
+			&registeredCarID,
 		); err != nil {
 			return nil, fmt.Errorf("scan tournament entrant: %w", err)
 		}
@@ -69,6 +72,11 @@ func (r *SQLiteEntrantsRepository) GetEntrants(
 		if driverID.Valid {
 			e.DriverID = driverID.String
 		}
+
+		if registeredCarID.Valid {
+			e.RegisteredCarID = registeredCarID.String
+		}
+
 		if score.Valid {
 			e.Score = &score.Float64
 		}

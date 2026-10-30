@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { SlidersHorizontal } from "@lucide/svelte";
   import Ellipsis from "@lucide/svelte/icons/ellipsis";
   import {
     createMutation,
@@ -21,7 +22,6 @@
     GetCriteriaConfigs,
   } from "$wails/go/main/App";
   import { repository } from "$wails/go/models";
-  import { SlidersHorizontal } from "@lucide/svelte";
 
   const queryClient = useQueryClient();
 
@@ -157,6 +157,7 @@
           </div>
         </div>
         <Button
+          class="bg-blue-600 text-white hover:bg-blue-700"
           onclick={() => {
             dialogMode = "create";
             configDialogOpen = true;

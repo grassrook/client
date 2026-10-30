@@ -115,7 +115,10 @@
           </div>
         </div>
 
-        <Button onclick={openCreateDialog}>
+        <Button
+          class="bg-blue-600 text-white hover:bg-blue-700"
+          onclick={openCreateDialog}
+        >
           <Plus class="mr-2 size-4" />
           New driver
         </Button>

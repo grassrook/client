@@ -168,7 +168,10 @@
         </div>
       </div>
 
-      <Button onclick={openCreateDialog}>+ New Track</Button>
+      <Button
+        class="bg-blue-600 text-white hover:bg-blue-700"
+        onclick={openCreateDialog}>+ New Track</Button
+      >
     </div>
 
     <Separator />

@@ -69,7 +69,11 @@
     {/if}
 
     <div class="flex justify-end border-t pt-5">
-      <Button type="submit" disabled={saving}>
+      <Button
+        class="bg-blue-600 text-white hover:bg-blue-700"
+        type="submit"
+        disabled={saving}
+      >
         <Save class="mr-2 size-4" />
         {saving ? "Saving changes..." : "Save changes"}
       </Button>

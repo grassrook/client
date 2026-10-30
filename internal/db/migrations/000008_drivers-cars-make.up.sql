@@ -14,6 +14,15 @@ CREATE TABLE car_makes (
     name TEXT NOT NULL
 );
 
+INSERT INTO car_makes (id, name)
+VALUES 
+    (1, 'Nissan'),
+    (2, 'Toyota'),
+    (3, 'Chevrolet'),
+    (4, 'Ford'),
+    (5, 'BMW'),
+    (6, 'Mazda');
+
 CREATE TABLE registered_cars (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,

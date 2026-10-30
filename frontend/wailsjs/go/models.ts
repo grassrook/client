@@ -1,3 +1,84 @@
+export namespace car {
+	
+	export class CarMake {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CarMake(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
+	export class CreateRegisteredCar {
+	    name: string;
+	    description: string;
+	    carMakeID: string;
+	    driverID: string;
+	    photos: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateRegisteredCar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.carMakeID = source["carMakeID"];
+	        this.driverID = source["driverID"];
+	        this.photos = source["photos"];
+	    }
+	}
+	export class RegisteredCar {
+	    id: string;
+	    name: string;
+	    description: string;
+	    carMakeID: string;
+	    driverID: string;
+	    createdAt: number;
+	    updatedAt: number;
+	    photos: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new RegisteredCar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.carMakeID = source["carMakeID"];
+	        this.driverID = source["driverID"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	        this.photos = source["photos"];
+	    }
+	}
+	export class UpdateRegisteredCar {
+	    name?: string;
+	    description?: string;
+	    photos?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateRegisteredCar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.photos = source["photos"];
+	    }
+	}
+
+}
+
 export namespace driver {
 	
 	export class CreateDriverReq {

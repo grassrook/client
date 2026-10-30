@@ -145,39 +145,6 @@
     deleteError = "";
     deleteDriverMutation.mutate(params.id);
   }
-
-  const mockCars = [
-    {
-      id: "car-1",
-      name: "Supra",
-      brand: "Toyota",
-      model: "Supra",
-      year: 1998,
-      registration: "DK 1234 AB",
-      imageUrl:
-        "https://images.unsplash.com/photo-1614200187524-dc4b892acf16?w=640",
-    },
-    {
-      id: "car-2",
-      name: "M3",
-      brand: "BMW",
-      model: "M3",
-      year: 2020,
-      registration: "AB 5678 CD",
-      imageUrl:
-        "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=640",
-    },
-    {
-      id: "car-3",
-      name: "Civic",
-      brand: "Honda",
-      model: "Civic",
-      year: 2015,
-      registration: "B 9012 EF",
-      imageUrl:
-        "https://images.unsplash.com/photo-1590362891991-f776e747a588?w=640",
-    },
-  ];
 </script>
 
 {#if mounted}
@@ -230,13 +197,7 @@
               driverId={currentDriver.id}
               onDelete={openDeleteDialog}
             />
-
-            <DriverRegisteredCars
-              cars={mockCars}
-              onAdd={() => console.log("Add car")}
-              onEdit={(car) => console.log("Edit car", car.id)}
-              onDelete={(car) => console.log("Delete car", car.id)}
-            />
+            <DriverRegisteredCars driverID={params.id} />
           </div>
         {/if}
       </div>

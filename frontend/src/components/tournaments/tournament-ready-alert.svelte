@@ -21,10 +21,16 @@
 
   const queryClient = useQueryClient();
 
-  // ready once every bracket slot has an entrant, and only while the
-  // tournament hasn't been started yet
+  // ready once every bracket slot has the minimum amount of entrants,
+  // have all been choosen which car they use, and only while the tournament hasn't been started yet
+  const allEntrantsHaveCars = $derived(
+    entrants.every((entrant) => entrant.registeredCarID !== ""),
+  );
+
   const ready = $derived(
-    tournament.status === "pending" && tournament.size <= entrants.length,
+    tournament.status === "pending" &&
+      tournament.size <= entrants.length &&
+      allEntrantsHaveCars,
   );
 
   const randomized = $derived(Boolean(tournament.randomizeQualifyingOrder));

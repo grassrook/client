@@ -37,6 +37,7 @@ type App struct {
 	driversRepo                repository.DriversRepository
 	matchesRepo                repository.MatchesRepository
 	bracketRepo                repository.BracketRepository
+	participantsRepo           repository.ParticipantsRepo
 	entrantsRepo               repository.EntrantsRepository
 	criteriaConfigRepo         repository.CriteriaConfigRepository
 	qualifyingScoresRepo       repository.QualfyingScoresRepository
@@ -77,6 +78,10 @@ func (a *App) startup(ctx context.Context) {
 	a.bracketRepo = &repository.SQLiteBracketRepository{
 		DB:              client,
 		ChallongeAPIKey: a.cfg.ChallongeApiKey,
+	}
+
+	a.participantsRepo = &repository.SQLiteParticipantsRepository{
+		DB: client,
 	}
 
 	a.entrantsRepo = &repository.SQLiteEntrantsRepository{
@@ -323,6 +328,10 @@ func (a *App) DeleteDriver(id string) error {
 }
 
 // -- Cars --
+
+func (a *App) UpdateParticipantCar(participantID, registeredCarID string) error {
+	return a.participantsRepo.UpdateRegisteredCar(a.ctx, participantID, registeredCarID)
+}
 
 func (a *App) CreateRegisteredCar(car car.CreateRegisteredCar) error {
 	return a.registeredCarsRepo.Create(a.ctx, car)

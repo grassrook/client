@@ -1,5 +1,4 @@
 <script lang="ts">
-  /* eslint-disable svelte/no-useless-mustaches */
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
@@ -9,14 +8,18 @@
     createQuery,
     useQueryClient,
   } from "@tanstack/svelte-query";
+  import { SvelteSet } from "svelte/reactivity";
 
   import { Button } from "$src/components/ui/button/index.js";
   import * as Dialog from "$src/components/ui/dialog/index.js";
+  import * as Select from "$src/components/ui/select/index.js";
   import * as Table from "$src/components/ui/table/index.js";
   import {
     DeleteParticipant,
+    GetDriverCarList,
     GetDrivers,
     InsertBulkParticipant,
+    UpdateParticipantCar,
     UpdateTournament,
   } from "$wails/go/main/App";
   import type { driver, entrant, tournament } from "$wails/go/models";
@@ -73,6 +76,67 @@
     queryKey: ["drivers"],
     queryFn: () => GetDrivers(),
   }));
+
+  type RegisteredCar = Awaited<ReturnType<typeof GetDriverCarList>>[number];
+
+  let driverCars = $state<Record<string, RegisteredCar[]>>({});
+  let loadingDriverCars = $state<Record<string, boolean>>({});
+  let driverCarErrors = $state<Record<string, string>>({});
+
+  const requestedDriverIds = new SvelteSet<string>();
+
+  $effect(() => {
+    const driverIds = [
+      ...new Set(
+        entrants.map((entrant) => entrant.driverId).filter((id) => id !== ""),
+      ),
+    ];
+
+    for (const driverId of driverIds) {
+      if (requestedDriverIds.has(driverId)) continue;
+
+      requestedDriverIds.add(driverId);
+      loadingDriverCars[driverId] = true;
+
+      GetDriverCarList(driverId)
+        .then((cars) => {
+          driverCars[driverId] = cars;
+        })
+        .catch((error: unknown) => {
+          driverCarErrors[driverId] =
+            error instanceof Error ? error.message : "Failed to load cars.";
+        })
+        .finally(() => {
+          loadingDriverCars[driverId] = false;
+        });
+    }
+  });
+
+  const updateParticipantCarMutation = createMutation(() => ({
+    mutationFn: async ({
+      participantId,
+      registeredCarId,
+    }: {
+      participantId: string;
+      registeredCarId: string;
+    }) => UpdateParticipantCar(participantId, registeredCarId),
+
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["entrants", tournament.id],
+      });
+    },
+  }));
+
+  function updateParticipantCar(
+    participantId: string,
+    registeredCarId: string,
+  ) {
+    updateParticipantCarMutation.mutate({
+      participantId,
+      registeredCarId,
+    });
+  }
 
   // ---------- mutations ----------
   const insertParticipantsMutation = createMutation(() => ({
@@ -328,6 +392,9 @@
                 {/if}
                 <Table.Head class="w-16">#</Table.Head>
                 <Table.Head>Name</Table.Head>
+                <Table.Head class={!editable ? "text-left" : ""}>
+                  Registered car
+                </Table.Head>
                 {#if editable}
                   <Table.Head class="w-16 text-right">Actions</Table.Head>
                 {/if}
@@ -363,6 +430,61 @@
                     >{index + 1}</Table.Cell
                   >
                   <Table.Cell class="font-medium">{entrant.name}</Table.Cell>
+                  <Table.Cell class={!editable ? "text-right" : ""}>
+                    {#if entrant.driverId}
+                      {#if loadingDriverCars[entrant.driverId]}
+                        <span class="text-sm text-muted-foreground"
+                          >Loading cars...</span
+                        >
+                      {:else if driverCarErrors[entrant.driverId]}
+                        <span class="text-sm text-destructive">
+                          {driverCarErrors[entrant.driverId]}
+                        </span>
+                      {:else}
+                        <Select.Root
+                          type="single"
+                          value={entrant.registeredCarID || "__none__"}
+                          onValueChange={(value) =>
+                            updateParticipantCar(
+                              entrant.participantId,
+                              value === "__none__" ? "" : value,
+                            )}
+                          disabled={updateParticipantCarMutation.isPending ||
+                            !editable}
+                        >
+                          <Select.Trigger
+                            class="bg-transparent! hover:bg-transparent! data-[state=open]:bg-transparent! h-9 w-full min-w-40"
+                          >
+                            <Select.Value>
+                              {#if entrant.registeredCarID}
+                                {driverCars[entrant.driverId]?.find(
+                                  (car) => car.id === entrant.registeredCarID,
+                                )?.name ?? "Unknown car"}
+                              {:else}
+                                No car assigned
+                              {/if}
+                            </Select.Value>
+                          </Select.Trigger>
+
+                          <Select.Content>
+                            <Select.Item value="__none__"
+                              >No car assigned</Select.Item
+                            >
+
+                            {#each driverCars[entrant.driverId] ?? [] as car (car.id)}
+                              <Select.Item value={car.id}>
+                                {car.name}
+                              </Select.Item>
+                            {/each}
+                          </Select.Content>
+                        </Select.Root>
+                      {/if}
+                    {:else}
+                      <span class="text-sm text-muted-foreground"
+                        >No registered driver</span
+                      >
+                    {/if}
+                  </Table.Cell>
                   {#if editable}
                     <Table.Cell class="text-right">
                       <Button

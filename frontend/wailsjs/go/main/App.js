@@ -194,6 +194,10 @@ export function UpdateNote(arg1, arg2) {
   return window['go']['main']['App']['UpdateNote'](arg1, arg2);
 }
 
+export function UpdateParticipantCar(arg1, arg2) {
+  return window['go']['main']['App']['UpdateParticipantCar'](arg1, arg2);
+}
+
 export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['UpdateQualifyingScore'](arg1, arg2, arg3, arg4, arg5);
 }

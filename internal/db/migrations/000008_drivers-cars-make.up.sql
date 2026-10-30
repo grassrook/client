@@ -9,6 +9,9 @@ CREATE TABLE drivers (
 ALTER TABLE participants
 ADD COLUMN driver_id TEXT REFERENCES drivers(id) ON DELETE SET NULL;
 
+ALTER TABLE participants
+ADD COLUMN registered_car_id TEXT REFERENCES registered_cars(id) ON DELETE SET NULL;
+
 CREATE TABLE car_makes (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL

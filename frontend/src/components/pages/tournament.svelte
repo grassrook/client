@@ -75,7 +75,7 @@
 {#if mounted}
   <div class="space-y-6" in:fade={{ duration: 300 }}>
     <div
-      class="sticky top-0 z-50 mx-auto w-full bg-background backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      class="sticky top-0 z-50 mx-auto w-full bg-background backdrop-blur supports-backdrop-filter:bg-background/80"
     >
       <header
         class="flex gap-5 px-4 pb-6 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 py-4"

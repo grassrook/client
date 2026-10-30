@@ -2,6 +2,9 @@ DROP TABLE IF EXISTS registered_car_photos;
 DROP TABLE IF EXISTS registered_cars;
 DROP TABLE IF EXISTS car_makes;
 
+-- ALTER TABLE participants
+-- DROP COLUMN registered_car_id;
+
 ALTER TABLE participants
 DROP COLUMN driver_id;
 

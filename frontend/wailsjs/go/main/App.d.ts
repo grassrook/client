@@ -106,6 +106,8 @@ export function UpdateMatchSingleParticipant(arg1:repository.UpdateMatchSinglePa
 
 export function UpdateNote(arg1:string,arg2:string):Promise<void>;
 
+export function UpdateParticipantCar(arg1:string,arg2:string):Promise<void>;
+
 export function UpdateQualifyingScore(arg1:string,arg2:string,arg3:number,arg4:number,arg5:string):Promise<void>;
 
 export function UpdateTournament(arg1:string,arg2:repository.UpdateTournamentRequest):Promise<void>;

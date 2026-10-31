@@ -1,0 +1,2 @@
+ALTER TABLE tournaments
+DROP COLUMN initial_qualifying_order;

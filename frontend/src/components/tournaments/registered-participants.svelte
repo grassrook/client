@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CopyIcon from "@lucide/svelte/icons/copy";
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
@@ -327,6 +328,25 @@
       )
       .finally(() => (deleting = false));
   }
+
+  async function copyInitialQualifyingOrder() {
+    const order = tournament.initialQualifyingOrder
+      ?.split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (!order?.length) return;
+
+    const entrantMap = new Map(
+      entrants.map((entrant) => [entrant.participantId, entrant.name]),
+    );
+
+    const names = order
+      .map((id) => entrantMap.get(id))
+      .filter((name): name is string => name !== undefined);
+
+    await navigator.clipboard.writeText(names.join("\n"));
+  }
 </script>
 
 <div class="mr-0 lg:mr-80">
@@ -348,12 +368,26 @@
             {/if}
           </p>
         </div>
-        {#if editable}
-          <Button onclick={() => (createOpen = true)}>
-            <PlusIcon class="mr-2 size-4" />
-            Add participants
-          </Button>
-        {/if}
+
+        <div class="flex items-center gap-2">
+          {#if tournament.status !== "pending" && tournament.initialQualifyingOrder}
+            <Button
+              variant="outline"
+              size="sm"
+              onclick={copyInitialQualifyingOrder}
+            >
+              <CopyIcon class="mr-2 size-4" />
+              Copy qualifying order
+            </Button>
+          {/if}
+
+          {#if editable}
+            <Button onclick={() => (createOpen = true)}>
+              <PlusIcon class="mr-2 size-4" />
+              Add participants
+            </Button>
+          {/if}
+        </div>
       </div>
 
       {#if items.length === 0}

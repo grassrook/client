@@ -427,9 +427,9 @@ WHERE id = ?
 
 	if _, err := tx.ExecContext(ctx, `
 UPDATE tournaments
-SET status = ?, qualifying_order = ?, updated_at = ?
+SET status = ?, qualifying_order = ?, initial_qualifying_order = ?, updated_at = ?
 WHERE id = ?
-`, "qualifying", qualifyingOrder, time.Now().Unix(), tournamentID); err != nil {
+`, "qualifying", qualifyingOrder, qualifyingOrder, time.Now().Unix(), tournamentID); err != nil {
 		return err
 	}
 
@@ -635,6 +635,7 @@ SELECT
 	t1.criteria_config,
 	t1.qualifying_rounds,
 	t1.randomize_qualifying_order,
+	t1.initial_qualifying_order,
 	CASE WHEN t3.status = 'finalized' THEN 1 ELSE 0 END AS finalized
 FROM tournaments t1
 LEFT JOIN tracks t2
@@ -654,6 +655,7 @@ WHERE t1.id = ?
 		&t.CriteriaConfig,
 		&t.QualifyingRounds,
 		&t.RandomizeQualifyingOrder,
+		&t.InitialQualifyingOrder,
 		&t.Finalized,
 	)
 	if err != nil {

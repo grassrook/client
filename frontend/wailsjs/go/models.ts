@@ -535,6 +535,7 @@ export namespace tournament {
 	    finalized: boolean;
 	    qualifyingRounds: number;
 	    randomizeQualifyingOrder: boolean;
+	    initialQualifyingOrder?: string;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -558,6 +559,7 @@ export namespace tournament {
 	        this.finalized = source["finalized"];
 	        this.qualifyingRounds = source["qualifyingRounds"];
 	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
+	        this.initialQualifyingOrder = source["initialQualifyingOrder"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }

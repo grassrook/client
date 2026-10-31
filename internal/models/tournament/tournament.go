@@ -15,6 +15,7 @@ type Tournament struct {
 	Finalized                bool    `json:"finalized"`
 	QualifyingRounds         int     `json:"qualifyingRounds"`
 	RandomizeQualifyingOrder bool    `json:"randomizeQualifyingOrder"`
+	InitialQualifyingOrder   *string `json:"initialQualifyingOrder"`
 	CreatedAt                int64   `json:"createdAt"`
 	UpdatedAt                int64   `json:"updatedAt"`
 }

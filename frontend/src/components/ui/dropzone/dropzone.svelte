@@ -160,11 +160,71 @@
     isDragging = false;
   }
 
-  function handleDrop(e: DragEvent) {
+  async function handleDrop(e: DragEvent) {
     e.preventDefault();
     isDragging = false;
-    if (disabled || !e.dataTransfer?.files) return;
-    processFiles(e.dataTransfer.files);
+
+    if (disabled || !e.dataTransfer) return;
+
+    if (e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
+      return;
+    }
+
+    const items = Array.from(e.dataTransfer.items);
+
+    for (const item of items) {
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) {
+          processFiles([file]);
+        }
+        continue;
+      }
+
+      if (item.kind === "string") {
+        const data = await new Promise<string>((resolve) => {
+          item.getAsString(resolve);
+        });
+
+        const url = data
+          .split("\n")
+          .map((value) => value.trim())
+          .find(
+            (value) =>
+              value.startsWith("https://") || value.startsWith("http://"),
+          );
+
+        if (url) {
+          await importFileFromUrl(url);
+          return;
+        }
+      }
+    }
+  }
+
+  async function importFileFromUrl(url: string) {
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Failed to download image.");
+      }
+
+      const blob = await response.blob();
+      const filename = decodeURIComponent(
+        new URL(url).pathname.split("/").pop() || "image",
+      );
+
+      const file = new File([blob], filename, {
+        type: blob.type || "application/octet-stream",
+      });
+
+      processFiles([file]);
+    } catch (error) {
+      errorMessage =
+        error instanceof Error ? error.message : "Failed to import image.";
+    }
   }
 
   function handleInputChange(e: Event) {
@@ -185,7 +245,7 @@
     class="relative flex flex-col items-center justify-center w-full min-h-[180px] p-6 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer text-center outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
 		{isDragging
       ? 'border-primary bg-primary/10 scale-[0.99]'
-      : 'border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/50'}
+      : 'hover:border-zinc-400/30'}
 		{disabled ? 'opacity-50 cursor-not-allowed' : ''}"
     onpointerdown={() => !disabled && fileInputRef?.click()}
     onkeydown={(e) =>

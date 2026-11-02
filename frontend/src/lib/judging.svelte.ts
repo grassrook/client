@@ -33,6 +33,10 @@ function scale(raw: number, fromMax: number, toMax: number): number {
   return (raw / fromMax) * toMax;
 }
 
+function roundToNearestTenths(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
 class Judgement {
   processing = $state(false);
   results: Record<string, Result> = $state({});
@@ -99,12 +103,14 @@ class Judgement {
 
     // returns readjusted scores based on their original proportion to new max score cap
     return {
-      lead:
+      lead: roundToNearestTenths(
         scale(raw.lead.common, m.common, l.commonScore) +
-        scale(raw.lead.judged, m.lead, l.maxScore - l.commonScore), // lead proportion is derived from maxScoreCap - commonScore
-      chase:
+          scale(raw.lead.judged, m.lead, l.maxScore - l.commonScore),
+      ), // lead proportion is derived from maxScoreCap - commonScore
+      chase: roundToNearestTenths(
         scale(raw.chase.common, m.common, c.commonScore) +
-        scale(raw.chase.judged, m.chase, c.maxScore - c.commonScore),
+          scale(raw.chase.judged, m.chase, c.maxScore - c.commonScore),
+      ),
     };
   }
 

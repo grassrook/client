@@ -283,7 +283,15 @@
         scores: scoresByParticipantId.get(entrant.participantId) ?? [],
       }));
 
-    const finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
+    let finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
+
+    const allEntrantsProcessed = finalOrdered.every(
+      (entrant) => entrant.status !== "pending",
+    );
+
+    if (tournament.status === "elimination" || allEntrantsProcessed) {
+      finalOrdered.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    }
 
     return {
       entrants: finalOrdered,

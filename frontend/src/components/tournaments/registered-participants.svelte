@@ -54,12 +54,26 @@
   });
 
   const orderedEntrants = $derived.by(() => {
+    if (tournament.status === "elimination") {
+      return entrants
+        .map((e, i) => ({ e, i }))
+        .sort((a, b) => {
+          const scoreA = a.e.score ?? 0;
+          const scoreB = b.e.score ?? 0;
+
+          return scoreB - scoreA || a.i - b.i;
+        })
+        .map(({ e }) => e);
+    }
+
     const rank = new Map(orderIds.map((id, i) => [id, i]));
+
     return entrants
       .map((e, i) => ({ e, i }))
       .sort((a, b) => {
         const ra = rank.get(a.e.participantId) ?? Number.MAX_SAFE_INTEGER;
         const rb = rank.get(b.e.participantId) ?? Number.MAX_SAFE_INTEGER;
+
         return ra - rb || a.i - b.i;
       })
       .map(({ e }) => e);
@@ -426,6 +440,10 @@
                 {/if}
                 <Table.Head class="w-16">#</Table.Head>
                 <Table.Head>Name</Table.Head>
+                {#if tournament.status === "elimination"}
+                  <Table.Head class="w-24 text-left">Score</Table.Head>
+                {/if}
+
                 <Table.Head class={!editable ? "text-left" : ""}>
                   Registered car
                 </Table.Head>
@@ -464,6 +482,12 @@
                     >{index + 1}</Table.Cell
                   >
                   <Table.Cell class="font-medium">{entrant.name}</Table.Cell>
+
+                  {#if tournament.status === "elimination"}
+                    <Table.Cell class="text-left tabular-nums font-medium">
+                      {entrant.score ?? 0}
+                    </Table.Cell>
+                  {/if}
                   <Table.Cell class={!editable ? "text-right" : ""}>
                     {#if entrant.driverId}
                       {#if loadingDriverCars[entrant.driverId]}

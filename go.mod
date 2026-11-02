@@ -3,11 +3,13 @@ module judginginternal
 go 1.26.0
 
 require (
+	github.com/amoghe/distillog v0.0.0-20180726233512-ae382b35b717
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/wailsapp/wails/v2 v2.16.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

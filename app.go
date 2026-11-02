@@ -8,6 +8,7 @@ import (
 	"judginginternal/internal/config"
 	"judginginternal/internal/db"
 	"judginginternal/internal/db/repository"
+	"judginginternal/internal/logger"
 	"judginginternal/internal/models/car"
 	"judginginternal/internal/models/driver"
 	"judginginternal/internal/models/entrant"
@@ -23,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/amoghe/distillog"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -30,8 +32,10 @@ var client *sql.DB = nil
 
 // App struct
 type App struct {
-	ctx                        context.Context
-	cfg                        *config.Config
+	ctx    context.Context
+	cfg    *config.Config
+	logger distillog.Logger
+
 	tournamentRepo             repository.TournamentRepository
 	tracksRepo                 repository.TracksRepository
 	driversRepo                repository.DriversRepository
@@ -48,7 +52,8 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp(cfg *config.Config) *App {
 	return &App{
-		cfg: cfg,
+		cfg:    cfg,
+		logger: logger.New(cfg.Workspace),
 	}
 }
 
@@ -109,14 +114,29 @@ func (a *App) startup(ctx context.Context) {
 	runtime.LogInfo(a.ctx, "Database connection established and repositories initialized")
 }
 
+func (a *App) logError(operation string, err error) {
+	if err == nil {
+		return
+	}
+
+	message := fmt.Sprintf("%s: %v", operation, err)
+
+	runtime.LogError(a.ctx, message)
+	a.logger.Errorf("%s", message)
+}
+
 func (a *App) GetCarPhoto(photoPath string) (string, error) {
 	if photoPath == "" {
-		return "", fmt.Errorf("photo path is empty")
+		err := fmt.Errorf("photo path is empty")
+		a.logError("GetCarPhoto", err)
+		return "", err
 	}
 
 	root, err := filepath.Abs(path.Join(a.cfg.Workspace, "media"))
 	if err != nil {
-		return "", fmt.Errorf("resolve media directory: %w", err)
+		err = fmt.Errorf("resolve media directory: %w", err)
+		a.logError("GetCarPhoto", err)
+		return "", err
 	}
 
 	fullPath := filepath.Join(root, filepath.Clean(photoPath))
@@ -124,16 +144,22 @@ func (a *App) GetCarPhoto(photoPath string) (string, error) {
 	// Ensure the requested file is inside MediaPath.
 	rel, err := filepath.Rel(root, fullPath)
 	if err != nil {
-		return "", fmt.Errorf("resolve photo path: %w", err)
+		err = fmt.Errorf("resolve photo path: %w", err)
+		a.logError("GetCarPhoto", err)
+		return "", err
 	}
 
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
-		return "", fmt.Errorf("invalid photo path")
+		err := fmt.Errorf("invalid photo path")
+		a.logError("GetCarPhoto", err)
+		return "", err
 	}
 
 	data, err := os.ReadFile(fullPath)
 	if err != nil {
-		return "", fmt.Errorf("read photo: %w", err)
+		err = fmt.Errorf("read photo: %w", err)
+		a.logError("GetCarPhoto", err)
+		return "", err
 	}
 
 	contentType := mime.TypeByExtension(filepath.Ext(fullPath))
@@ -148,6 +174,7 @@ func (a *App) GetCarPhoto(photoPath string) (string, error) {
 
 func (a *App) HasChallongeAPIKey() bool {
 	if _, err := a.cfg.Get(config.ChallongeApiKey); err != nil {
+		a.logError("HasChallongeAPIKey", err)
 		return false
 	}
 	return true
@@ -155,8 +182,11 @@ func (a *App) HasChallongeAPIKey() bool {
 
 func (a *App) SetChallongeAPIKey(key string) error {
 	url := "https://api.challonge.com/v2.1/me.json"
+
 	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, url, nil)
 	if err != nil {
+		err = fmt.Errorf("create Challonge API request: %w", err)
+		a.logError("SetChallongeAPIKey", err)
 		return err
 	}
 
@@ -167,15 +197,25 @@ func (a *App) SetChallongeAPIKey(key string) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("Internal server error: %w", err)
+		err = fmt.Errorf("validate Challonge API key: %w", err)
+		a.logError("SetChallongeAPIKey", err)
+		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("Could not validate API Key %d", resp.StatusCode)
+		err = fmt.Errorf("could not validate Challonge API key: HTTP %d", resp.StatusCode)
+		a.logError("SetChallongeAPIKey", err)
+		return err
 	}
 
-	return a.cfg.Set(config.ChallongeApiKey, key)
+	if err := a.cfg.Set(config.ChallongeApiKey, key); err != nil {
+		err = fmt.Errorf("save Challonge API key: %w", err)
+		a.logError("SetChallongeAPIKey", err)
+		return err
+	}
+
+	return nil
 }
 
 // -- Tournament --
@@ -183,7 +223,7 @@ func (a *App) SetChallongeAPIKey(key string) error {
 func (a *App) GetTournaments() ([]tournament.Tournament, error) {
 	tournaments, err := a.tournamentRepo.GetTournaments()
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to get tournaments: %v", err)
+		a.logError("GetTournaments", err)
 		return []tournament.Tournament{}, err
 	}
 
@@ -197,7 +237,7 @@ func (a *App) GetTournaments() ([]tournament.Tournament, error) {
 func (a *App) GetTournament(id string) (tournament.Tournament, error) {
 	t, err := a.tournamentRepo.GetTournamentById(id)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to get tournament: %v", err)
+		a.logError("GetTournament", err)
 		return tournament.Tournament{}, err
 	}
 
@@ -207,7 +247,7 @@ func (a *App) GetTournament(id string) (tournament.Tournament, error) {
 func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournament, error) {
 	t, err := a.tournamentRepo.CreateTournament(a.ctx, req)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to create tournament: %v", err)
+		a.logError("CreateTournament", err)
 		return tournament.Tournament{}, err
 	}
 
@@ -218,6 +258,7 @@ func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournam
 	}
 
 	if err := a.tournamentActivityLogsRepo.Create(a.ctx, log); err != nil {
+		a.logError("CreateTournament", err)
 		return *t, nil
 	}
 
@@ -227,6 +268,7 @@ func (a *App) CreateTournament(req tournament.CreateRequest) (tournament.Tournam
 func (a *App) InsertBulkParticipant(tournamentID string, driverIDs []string) ([]string, error) {
 	p, err := a.tournamentRepo.InsertBulkParticipant(a.ctx, tournamentID, driverIDs)
 	if err != nil {
+		a.logError("InsertBulkParticipant", err)
 		return nil, err
 	}
 	return p, err
@@ -235,6 +277,7 @@ func (a *App) InsertBulkParticipant(tournamentID string, driverIDs []string) ([]
 func (a *App) GetParticipants(tournamentID string) ([]participant.Participant, error) {
 	participants, err := a.tournamentRepo.GetParticipants(a.ctx, tournamentID)
 	if err != nil {
+		a.logError("GetParticipants", err)
 		return nil, err
 	}
 	return participants, err
@@ -243,6 +286,7 @@ func (a *App) GetParticipants(tournamentID string) ([]participant.Participant, e
 func (a *App) StartTournament(tournamentID string) error {
 	err := a.tournamentRepo.StartTournament(a.ctx, tournamentID)
 	if err != nil {
+		a.logError("StartTournament", err)
 		return nil
 	}
 
@@ -256,31 +300,56 @@ func (a *App) StartTournament(tournamentID string) error {
 }
 
 func (a *App) DeleteParticipant(tournamentID, participantID string) error {
-	return a.tournamentRepo.DeleteParticipant(a.ctx, tournamentID, participantID)
+	err := a.tournamentRepo.DeleteParticipant(a.ctx, tournamentID, participantID)
+	if err != nil {
+		a.logError("DeleteParticipant", err)
+		return err
+	}
+	return nil
 }
 
 func (a *App) UpdateTournament(id string, req repository.UpdateTournamentRequest) error {
-	return a.tournamentRepo.UpdateTournament(a.ctx, id, req)
+	err := a.tournamentRepo.UpdateTournament(a.ctx, id, req)
+	if err != nil {
+		a.logError("UpdateTournament", err)
+		return err
+	}
+	return nil
 }
 
 func (a *App) UpdateTournamentState(id, state string) error {
-	return a.tournamentRepo.UpdateTournamentState(a.ctx, id, state)
+	err := a.tournamentRepo.UpdateTournamentState(a.ctx, id, state)
+	if err != nil {
+		a.logError("UpdateTournamentState", err)
+		return err
+	}
+	return nil
 }
 
 func (a *App) DeleteTournament(id, status string) error {
 	// only update the tournament state if tournament already been started
 	if status == "elimination" {
 		if err := a.tournamentRepo.UpdateTournamentState(a.ctx, id, "reset"); err != nil {
-			runtime.LogError(a.ctx, err.Error())
+			a.logError("DeleteTournament", err)
 			return err
 		}
 	}
 
-	return a.tournamentRepo.DeleteTournamentById(a.ctx, id)
+	err := a.tournamentRepo.DeleteTournamentById(a.ctx, id)
+	if err != nil {
+		a.logError("DeleteTournamentByID", err)
+		return err
+	}
+	return nil
 }
 
 func (a *App) SyncTournament(id string) error {
-	return a.bracketRepo.Sync(a.ctx, id)
+	err := a.bracketRepo.Sync(a.ctx, id)
+	if err != nil {
+		a.logError("SyncTournament", err)
+		return err
+	}
+	return nil
 }
 
 // -- Tracks --
@@ -288,58 +357,102 @@ func (a *App) SyncTournament(id string) error {
 func (a *App) GetTracks() ([]track.Track, error) {
 	tracks, err := a.tracksRepo.GetAll(a.ctx)
 	if err != nil {
+		a.logError("GetTracks", err)
 		return nil, err
 	}
 	return tracks, nil
 }
 
 func (a *App) CreateTrack(trackreq track.CreateTrackReq) error {
-	return a.tracksRepo.Create(a.ctx, trackreq)
+	err := a.tracksRepo.Create(a.ctx, trackreq)
+	if err != nil {
+		a.logError("DeleteTrack", err)
+	}
+	return err
 }
 
 func (a *App) DeleteTrack(id string) error {
-	return a.tracksRepo.Delete(a.ctx, id)
+	err := a.tracksRepo.Delete(a.ctx, id)
+	if err != nil {
+		a.logError("DeleteTrack", err)
+	}
+	return err
 }
 
 func (a *App) UpdateTrack(track track.UpdateTrackReq) error {
-	return a.tracksRepo.Update(a.ctx, track)
+	err := a.tracksRepo.Update(a.ctx, track)
+	if err != nil {
+		a.logError("UpdateTrack", err)
+	}
+	return err
 }
 
 // -- Drivers --
 
 func (a *App) GetDrivers() ([]driver.Driver, error) {
-	return a.driversRepo.GetAll(a.ctx)
+	drivers, err := a.driversRepo.GetAll(a.ctx)
+	if err != nil {
+		a.logError("GetDrivers", err)
+		return nil, err
+	}
+	return drivers, nil
 }
 
 func (a *App) GetDriverByID(id string) (driver.Driver, error) {
-	return a.driversRepo.GetByID(a.ctx, id)
+	d, err := a.driversRepo.GetByID(a.ctx, id)
+	if err != nil {
+		a.logError("GetDriverByID", err)
+		return driver.Driver{}, err
+	}
+	return d, nil
 }
 
 func (a *App) CreateDriver(req driver.CreateDriverReq) error {
-	return a.driversRepo.Create(a.ctx, req)
+	err := a.driversRepo.Create(a.ctx, req)
+	if err != nil {
+		a.logError("CreateDriver", err)
+	}
+	return err
 }
 
 func (a *App) UpdateDriver(req driver.UpdateDriverReq) error {
-	return a.driversRepo.Update(a.ctx, req)
+	err := a.driversRepo.Update(a.ctx, req)
+	if err != nil {
+		a.logError("UpdateDriver", err)
+	}
+	return err
 }
 
 func (a *App) DeleteDriver(id string) error {
-	return a.driversRepo.Delete(a.ctx, id)
+	err := a.driversRepo.Delete(a.ctx, id)
+	if err != nil {
+		a.logError("DeleteDriver", err)
+	}
+	return err
 }
 
 // -- Cars --
 
 func (a *App) UpdateParticipantCar(participantID, registeredCarID string) error {
-	return a.participantsRepo.UpdateRegisteredCar(a.ctx, participantID, registeredCarID)
+	err := a.participantsRepo.UpdateRegisteredCar(a.ctx, participantID, registeredCarID)
+	if err != nil {
+		a.logError("UpdateParticipantCar", err)
+	}
+	return err
 }
 
 func (a *App) CreateRegisteredCar(car car.CreateRegisteredCar) error {
-	return a.registeredCarsRepo.Create(a.ctx, car)
+	err := a.registeredCarsRepo.Create(a.ctx, car)
+	if err != nil {
+		a.logError("CreateRegisteredCar", err)
+	}
+	return err
 }
 
 func (a *App) GetCarByID(id string) (car.RegisteredCar, error) {
 	c, err := a.registeredCarsRepo.GetByID(a.ctx, id)
 	if err != nil {
+		a.logError("GetCarByID", err)
 		return car.RegisteredCar{}, err
 	}
 	return c, nil
@@ -348,25 +461,35 @@ func (a *App) GetCarByID(id string) (car.RegisteredCar, error) {
 func (a *App) GetDriverCarList(driverID string) ([]car.RegisteredCar, error) {
 	list, err := a.registeredCarsRepo.ListByDriverID(a.ctx, driverID)
 	if err != nil {
+		a.logError("GetDriverCarList", err)
 		return nil, err
 	}
 	return list, nil
 }
 
 func (a *App) ListCarMakes() ([]car.CarMake, error) {
-	l, err := a.registeredCarsRepo.ListCarMakes(a.ctx)
+	makes, err := a.registeredCarsRepo.ListCarMakes(a.ctx)
 	if err != nil {
+		a.logError("ListCarMakes", err)
 		return nil, err
 	}
-	return l, nil
+	return makes, nil
 }
 
 func (a *App) DeleteCar(id string) error {
-	return a.registeredCarsRepo.Delete(a.ctx, id)
+	err := a.registeredCarsRepo.Delete(a.ctx, id)
+	if err != nil {
+		a.logError("DeleteCar", err)
+	}
+	return err
 }
 
 func (a *App) UpdateCar(id string, car car.UpdateRegisteredCar) error {
-	return a.registeredCarsRepo.Update(a.ctx, id, car)
+	err := a.registeredCarsRepo.Update(a.ctx, id, car)
+	if err != nil {
+		a.logError("UpdateCar", err)
+	}
+	return err
 }
 
 // -- Matches --
@@ -374,17 +497,16 @@ func (a *App) UpdateCar(id string, car car.UpdateRegisteredCar) error {
 func (a *App) GetMatch(matchID string) (repository.Match, error) {
 	match, err := a.matchesRepo.GetMatch(a.ctx, matchID)
 	if err != nil {
-		runtime.LogError(a.ctx, err.Error())
+		a.logError("GetMatch", err)
 		return repository.Match{}, err
 	}
-
 	return match, nil
 }
 
 func (a *App) GetMatches(tournamentID string) ([][][]repository.Match, error) {
 	matches, err := a.matchesRepo.GetMatches(a.ctx, tournamentID)
 	if err != nil {
-		runtime.LogError(a.ctx, err.Error())
+		a.logError("GetMatches", err)
 		return nil, err
 	}
 	return matches, nil
@@ -393,30 +515,24 @@ func (a *App) GetMatches(tournamentID string) ([][][]repository.Match, error) {
 func (a *App) UpdateMatchSingleParticipant(req repository.UpdateMatchSingleParticipantParams) error {
 	_, err := a.matchesRepo.UpdateMatchSingleParticipant(a.ctx, req)
 	if err != nil {
-		runtime.LogError(a.ctx, err.Error())
-		return err
+		a.logError("UpdateMatchSingleParticipant", err)
 	}
-	return nil
+	return err
 }
 
 func (a *App) GetActiveMatches(tournamentID string) ([]repository.ActiveBattle, error) {
 	matches, err := a.matchesRepo.GetActiveMatches(a.ctx, tournamentID)
 	if err != nil {
-		runtime.LogError(a.ctx, err.Error())
+		a.logError("GetActiveMatches", err)
 		return nil, err
 	}
 	return matches, nil
 }
 
 func (a *App) ConcludeBattle(tournamentID, matchID string) error {
-	winner, err := a.matchesRepo.ConcludeBattle(
-		a.ctx,
-		tournamentID,
-		matchID,
-	)
-
+	winner, err := a.matchesRepo.ConcludeBattle(a.ctx, tournamentID, matchID)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to conclude battle: %v", err)
+		a.logError("ConcludeBattle", err)
 		return err
 	}
 
@@ -426,32 +542,44 @@ func (a *App) ConcludeBattle(tournamentID, matchID string) error {
 		LogType:      tournamentactivitylog.WON_BATTLE,
 	}
 
-	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+	err = a.tournamentActivityLogsRepo.Create(a.ctx, log)
+	if err != nil {
+		a.logError("ConcludeBattle: create activity log", err)
+	}
+	return err
 }
 
 func (a *App) GetNote(matchID string) (string, error) {
 	note, err := a.matchesRepo.GetNote(a.ctx, matchID)
 	if err != nil {
+		a.logError("GetNote", err)
 		return "", err
 	}
 	return note, nil
 }
 
 func (a *App) UpdateNote(matchID, text string) error {
-	return a.matchesRepo.UpdateNote(a.ctx, matchID, text)
+	err := a.matchesRepo.UpdateNote(a.ctx, matchID, text)
+	if err != nil {
+		a.logError("UpdateNote", err)
+	}
+	return err
 }
 
 func (a *App) ResetBattle(tournamentID, matchID string) error {
-	return a.matchesRepo.ResetBattle(a.ctx, tournamentID, matchID)
+	err := a.matchesRepo.ResetBattle(a.ctx, tournamentID, matchID)
+	if err != nil {
+		a.logError("ResetBattle", err)
+	}
+	return err
 }
 
 func (a *App) ChangeLeader(tournamentID, matchID string) error {
-	if err := a.matchesRepo.ChangeLeader(a.ctx, tournamentID, matchID); err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to change leader: %v", err)
-		return err
+	err := a.matchesRepo.ChangeLeader(a.ctx, tournamentID, matchID)
+	if err != nil {
+		a.logError("ChangeLeader", err)
 	}
-
-	return nil
+	return err
 }
 
 // -- Entrants --
@@ -459,21 +587,24 @@ func (a *App) ChangeLeader(tournamentID, matchID string) error {
 func (a *App) GetEntrants(id string) ([]entrant.Entrant, error) {
 	entrants, err := a.entrantsRepo.GetEntrants(a.ctx, id)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to get tournament: %v", err)
+		a.logError("GetEntrants", err)
 		return nil, err
 	}
-
 	return entrants, nil
 }
 
 func (a *App) UpdateEntrant(req repository.UpdateEntrantParams) error {
-	return a.entrantsRepo.UpdateEntrant(a.ctx, req)
+	err := a.entrantsRepo.UpdateEntrant(a.ctx, req)
+	if err != nil {
+		a.logError("UpdateEntrant", err)
+	}
+	return err
 }
 
 func (a *App) ConcludeQualifers(tournamentId string) error {
 	err := a.entrantsRepo.ConcludeQualifiers(a.ctx, tournamentId)
 	if err != nil {
-		runtime.LogErrorf(a.ctx, "Failed to conclude qualifers: %v", err)
+		a.logError("ConcludeQualifers", err)
 		return err
 	}
 
@@ -483,60 +614,107 @@ func (a *App) ConcludeQualifers(tournamentId string) error {
 		LogType:      tournamentactivitylog.QUALIFYING_FINISHED,
 	}
 
-	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
+	err = a.tournamentActivityLogsRepo.Create(a.ctx, log)
+	if err != nil {
+		a.logError("ConcludeQualifers: create activity log", err)
+	}
+	return err
 }
 
 // -- Criteria Configs --
 
 func (a *App) GetCriteriaConfigs() ([]repository.CriteriaConfig, error) {
-	return a.criteriaConfigRepo.Get()
+	configs, err := a.criteriaConfigRepo.Get()
+	if err != nil {
+		a.logError("GetCriteriaConfigs", err)
+		return nil, err
+	}
+	return configs, nil
 }
 
 func (a *App) GetCriteriaConfigByID(id int) (repository.CriteriaConfig, error) {
-	return a.criteriaConfigRepo.GetByID(id)
+	config, err := a.criteriaConfigRepo.GetByID(id)
+	if err != nil {
+		a.logError("GetCriteriaConfigByID", err)
+		return repository.CriteriaConfig{}, err
+	}
+	return config, nil
 }
 
 func (a *App) CreateCriteriaConfig(config repository.CriteriaConfig) error {
-	return a.criteriaConfigRepo.Create(config)
+	err := a.criteriaConfigRepo.Create(config)
+	if err != nil {
+		a.logError("CreateCriteriaConfig", err)
+	}
+	return err
 }
 
 func (a *App) CopyCriteriaConfigById(id int) error {
 	_, err := a.criteriaConfigRepo.CopyByID(id)
+	if err != nil {
+		a.logError("CopyCriteriaConfigById", err)
+	}
 	return err
 }
 
 func (a *App) UpdateCriteriaConfig(id int, config repository.CriteriaConfig) error {
-	return a.criteriaConfigRepo.Update(id, config)
+	err := a.criteriaConfigRepo.Update(id, config)
+	if err != nil {
+		a.logError("UpdateCriteriaConfig", err)
+	}
+	return err
 }
 
 func (a *App) DeleteCriteriaConfig(id int) error {
-	return a.criteriaConfigRepo.Delete(id)
+	err := a.criteriaConfigRepo.Delete(id)
+	if err != nil {
+		a.logError("DeleteCriteriaConfig", err)
+	}
+	return err
 }
 
 // -- Qualifying Scores --
 
 func (a *App) InitializeQualifyingScores(tournamentID string) error {
-	return a.qualifyingScoresRepo.InitializeScores(a.ctx, tournamentID)
+	err := a.qualifyingScoresRepo.InitializeScores(a.ctx, tournamentID)
+	if err != nil {
+		a.logError("InitializeQualifyingScores", err)
+	}
+	return err
 }
 
 func (a *App) GetAllQualifyingScores(tournamentID string) ([]qualifyingscore.Data, error) {
 	data, err := a.qualifyingScoresRepo.FindAllScores(a.ctx, tournamentID)
 	if err != nil {
+		a.logError("GetAllQualifyingScores", err)
 		return nil, err
 	}
 	return data, nil
 }
 
 func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, round int, score float64, status string) error {
-	return a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
+	err := a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
+	if err != nil {
+		a.logError("UpdateQualifyingScore", err)
+	}
+	return err
 }
 
 // -- Activity Logs --
 
 func (a *App) GetTournamentActivityLogs(tournamentID string) ([]tournamentactivitylog.TournamentActivityLog, error) {
-	return a.tournamentActivityLogsRepo.GetByTournamentID(a.ctx, tournamentID)
+	logs, err := a.tournamentActivityLogsRepo.GetByTournamentID(a.ctx, tournamentID)
+	if err != nil {
+		a.logError("GetTournamentActivityLogs", err)
+		return nil, err
+	}
+	return logs, nil
 }
 
 func (a *App) CreateTournamentActivityLog(input tournamentactivitylog.CreateTournamentActivityLogInput) error {
-	return a.tournamentActivityLogsRepo.Create(a.ctx, input)
+	err := a.tournamentActivityLogsRepo.Create(a.ctx, input)
+	if err != nil {
+		a.logError("CreateTournamentActivityLog", err)
+	}
+	return err
 }

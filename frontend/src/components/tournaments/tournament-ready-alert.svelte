@@ -29,7 +29,7 @@
 
   const ready = $derived(
     tournament.status === "pending" &&
-      tournament.size <= entrants.length &&
+      entrants.length >= 2 &&
       allEntrantsHaveCars,
   );
 
@@ -69,7 +69,10 @@
         <Alert.Description>
           <p>
             All {tournament.size} spots are filled with {entrants.length}
-            {entrants.length === 1 ? "participant" : "participants"}.
+            {entrants.length === 1 ? "participant" : "participants"}. {entrants.length >=
+              2 && entrants.length < tournament.size
+              ? "Top qualifiers will serve bye runs"
+              : ""}
             {#if randomized}
               <!-- // -->
             {:else}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { type Snippet, untrack } from "svelte";
 
   import Empty from "$src/components/ui/empty/empty.svelte";
   import EmptyDescription from "$src/components/ui/empty/empty-description.svelte";
@@ -37,6 +37,32 @@
   const common = $derived(categories.find(([id]) => id === "common"));
   const lead = $derived(categories.find(([id]) => id === "lead"));
   const chase = $derived(categories.find(([id]) => id === "chase"));
+
+  const weighMaxScore = $derived(
+    categories.find(([id]) => id === "weighMaxScore")?.[1] === true,
+  );
+
+  const scoreWeighs = $derived(
+    categories.find(([id]) => id === "scoreWeighs")?.[1] as
+      | repository.ScoreWeighs
+      | undefined,
+  );
+
+  $effect(() => {
+    const config = {
+      weighMaxScore,
+      scoreWeighs,
+      categories: {
+        lead: lead?.[1],
+        chase: chase?.[1],
+        common: common?.[1],
+      },
+    } as repository.CriteriaConfig;
+
+    untrack(() => {
+      judgement.setConfig(config);
+    });
+  });
 </script>
 
 <div class="relative mt-2" aria-busy={judgement.processing}>

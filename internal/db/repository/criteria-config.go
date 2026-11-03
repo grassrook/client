@@ -7,11 +7,23 @@ import (
 	"time"
 )
 
+type ScoreWeighs struct {
+	Lead  WeighAllocation `json:"lead"`
+	Chase WeighAllocation `json:"chase"`
+}
+
+type WeighAllocation struct {
+	MaxScore    int `json:"maxScore"`
+	CommonScore int `json:"commonScore"`
+}
+
 type CriteriaConfig struct {
-	ID         int                `json:"id"`
-	Name       string             `json:"name"`
-	Categories CriteriaCategories `json:"categories"`
-	Raw        string             `json:"raw"`
+	ID            int                `json:"id"`
+	Name          string             `json:"name"`
+	Categories    CriteriaCategories `json:"categories"`
+	Raw           string             `json:"raw"`
+	WeighMaxScore bool               `json:"weighMaxScore"`
+	ScoreWeighs   ScoreWeighs        `json:"scoreWeighs"`
 }
 
 type CriteriaCategories struct {
@@ -48,12 +60,41 @@ type SQLiteCriteriaConfigRepository struct {
 	DB *sql.DB
 }
 
+type criteriaConfigJSON struct {
+	CriteriaCategories
+	WeighMaxScore bool        `json:"weighMaxScore"`
+	ScoreWeighs   ScoreWeighs `json:"scoreWeighs"`
+}
+
+func encodeCriteriaConfig(config CriteriaConfig) ([]byte, error) {
+	return json.Marshal(criteriaConfigJSON{
+		CriteriaCategories: config.Categories,
+		WeighMaxScore:      config.WeighMaxScore,
+		ScoreWeighs:        config.ScoreWeighs,
+	})
+}
+
+func decodeCriteriaConfig(raw []byte, config *CriteriaConfig) error {
+	var stored criteriaConfigJSON
+
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		return err
+	}
+
+	config.Categories = stored.CriteriaCategories
+	config.WeighMaxScore = stored.WeighMaxScore
+	config.ScoreWeighs = stored.ScoreWeighs
+	config.Raw = string(raw)
+
+	return nil
+}
+
 func (r *SQLiteCriteriaConfigRepository) Get() ([]CriteriaConfig, error) {
 	rows, err := r.DB.Query(`
-		SELECT id, name, config
-		FROM criteria_configs
-		ORDER BY id
-	`)
+        SELECT id, name, config
+        FROM criteria_configs
+        ORDER BY id
+    `)
 	if err != nil {
 		return nil, fmt.Errorf("get criteria configs: %w", err)
 	}
@@ -63,16 +104,16 @@ func (r *SQLiteCriteriaConfigRepository) Get() ([]CriteriaConfig, error) {
 
 	for rows.Next() {
 		var config CriteriaConfig
-		var raw string
+		var raw []byte
 
 		if err := rows.Scan(&config.ID, &config.Name, &raw); err != nil {
 			return nil, fmt.Errorf("scan criteria config: %w", err)
 		}
 
-		if err := json.Unmarshal([]byte(raw), &config.Categories); err != nil {
+		if err := decodeCriteriaConfig(raw, &config); err != nil {
 			return nil, fmt.Errorf("decode criteria config %d: %w", config.ID, err)
 		}
-		config.Raw = raw
+
 		configs = append(configs, config)
 	}
 
@@ -85,26 +126,26 @@ func (r *SQLiteCriteriaConfigRepository) Get() ([]CriteriaConfig, error) {
 
 func (r *SQLiteCriteriaConfigRepository) GetByID(id int) (CriteriaConfig, error) {
 	var config CriteriaConfig
-	var rawConfig []byte
+	var raw []byte
 
 	err := r.DB.QueryRow(`
         SELECT id, name, config
         FROM criteria_configs
         WHERE id = ?
-    `, id).Scan(&config.ID, &config.Name, &rawConfig)
+    `, id).Scan(&config.ID, &config.Name, &raw)
 	if err != nil {
 		return CriteriaConfig{}, err
 	}
 
-	if err := json.Unmarshal(rawConfig, &config.Categories); err != nil {
-		return CriteriaConfig{}, fmt.Errorf("unmarshal criteria config: %w", err)
+	if err := decodeCriteriaConfig(raw, &config); err != nil {
+		return CriteriaConfig{}, fmt.Errorf("decode criteria config: %w", err)
 	}
 
 	return config, nil
 }
 
 func (r *SQLiteCriteriaConfigRepository) Create(config CriteriaConfig) error {
-	raw, err := json.Marshal(config.Categories)
+	raw, err := encodeCriteriaConfig(config)
 	if err != nil {
 		return fmt.Errorf("encode criteria config: %w", err)
 	}
@@ -112,9 +153,9 @@ func (r *SQLiteCriteriaConfigRepository) Create(config CriteriaConfig) error {
 	now := time.Now().Unix()
 
 	_, err = r.DB.Exec(`
-		INSERT INTO criteria_configs (name, config, created_at, updated_at)
-		VALUES (?, ?, ?, ?)
-	`, config.Name, string(raw), now, now)
+        INSERT INTO criteria_configs (name, config, created_at, updated_at)
+        VALUES (?, ?, ?, ?)
+    `, config.Name, string(raw), now, now)
 	if err != nil {
 		return fmt.Errorf("create criteria config: %w", err)
 	}
@@ -159,16 +200,16 @@ func (r *SQLiteCriteriaConfigRepository) Delete(id int) error {
 }
 
 func (r *SQLiteCriteriaConfigRepository) Update(id int, config CriteriaConfig) error {
-	raw, err := json.Marshal(config.Categories)
+	raw, err := encodeCriteriaConfig(config)
 	if err != nil {
 		return fmt.Errorf("encode criteria config: %w", err)
 	}
 
 	result, err := r.DB.Exec(`
-		UPDATE criteria_configs
-		SET name = ?, config = ?, updated_at = ?
-		WHERE id = ?
-	`, config.Name, string(raw), time.Now().Unix(), id)
+        UPDATE criteria_configs
+        SET name = ?, config = ?, updated_at = ?
+        WHERE id = ?
+    `, config.Name, string(raw), time.Now().Unix(), id)
 	if err != nil {
 		return fmt.Errorf("update criteria config: %w", err)
 	}
@@ -177,6 +218,7 @@ func (r *SQLiteCriteriaConfigRepository) Update(id int, config CriteriaConfig) e
 	if err != nil {
 		return fmt.Errorf("check updated criteria config: %w", err)
 	}
+
 	if n == 0 {
 		return fmt.Errorf("criteria config %d not found", id)
 	}

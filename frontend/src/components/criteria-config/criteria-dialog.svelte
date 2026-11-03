@@ -1,6 +1,7 @@
 <script lang="ts">
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { untrack } from "svelte";
 
   import { Button } from "$src/components/ui/button";
   import * as Collapsible from "$src/components/ui/collapsible";
@@ -9,6 +10,7 @@
   import { Input } from "$src/components/ui/input";
   import Label from "$src/components/ui/label/label.svelte";
   import * as Select from "$src/components/ui/select";
+  import * as Switch from "$src/components/ui/switch";
   import {
     CreateCriteriaConfig,
     UpdateCriteriaConfig,
@@ -17,6 +19,7 @@
 
   import Separator from "../ui/separator/separator.svelte";
   import CategoryHeader from "./category-header.svelte";
+  import Partition from "./partition.svelte";
 
   type CategoryKey = "common" | "lead" | "chase";
   type TagType = "neutral" | "deduction";
@@ -60,10 +63,96 @@
   let newConfigName = $state("");
   let formError = $state("");
 
+  let weighMaxScore = $state(false);
+
+  let leadAllocation = $state<repository.WeighAllocation>({
+    maxScore: 100,
+    commonScore: 50,
+  });
+
+  let chaseAllocation = $state<repository.WeighAllocation>({
+    maxScore: 100,
+    commonScore: 50,
+  });
+
+  let leadMaxScoreInput = $state(100);
+  let chaseMaxScoreInput = $state(100);
+
+  const leadParts = $derived([
+    {
+      id: "common",
+      label: "Common",
+      size: leadAllocation.commonScore,
+      minSize: 0,
+      color: "#3b82f6",
+    },
+    {
+      id: "lead",
+      label: "Lead",
+      size: leadAllocation.maxScore - leadAllocation.commonScore,
+      minSize: 0,
+      color: "#22c55e",
+    },
+  ]);
+
+  const chaseParts = $derived([
+    {
+      id: "common",
+      label: "Common",
+      size: chaseAllocation.commonScore,
+      minSize: 0,
+      color: "#3b82f6",
+    },
+    {
+      id: "chase",
+      label: "Chase",
+      size: chaseAllocation.maxScore - chaseAllocation.commonScore,
+      minSize: 0,
+      color: "#eab308",
+    },
+  ]);
+
+  function updateLeadScore(parts: { size: number }[]) {
+    const common = parts[0]?.size;
+
+    if (common === undefined) return;
+
+    leadAllocation.commonScore = Math.max(
+      0,
+      Math.min(leadAllocation.maxScore, Math.round(common)),
+    );
+  }
+
+  function updateChaseScore(parts: { size: number }[]) {
+    const common = parts[0]?.size;
+
+    if (common === undefined) return;
+
+    chaseAllocation.commonScore = Math.max(
+      0,
+      Math.min(chaseAllocation.maxScore, Math.round(common)),
+    );
+  }
+
   function resetForm() {
     newConfigName = "";
     categories = defaultCategories();
     formError = "";
+
+    weighMaxScore = false;
+
+    leadAllocation = {
+      maxScore: 100,
+      commonScore: 50,
+    };
+
+    chaseAllocation = {
+      maxScore: 100,
+      commonScore: 50,
+    };
+
+    leadMaxScoreInput = 100;
+    chaseMaxScoreInput = 100;
   }
 
   type CategoryInput = {
@@ -102,6 +191,21 @@
       chase: toFormCategory(value.categories.chase),
     };
 
+    weighMaxScore = value.weighMaxScore ?? false;
+
+    leadAllocation = {
+      maxScore: value.scoreWeighs?.lead?.maxScore || 100,
+      commonScore: value.scoreWeighs?.lead?.commonScore || 50,
+    };
+
+    chaseAllocation = {
+      maxScore: value.scoreWeighs?.chase?.maxScore || 100,
+      commonScore: value.scoreWeighs?.chase?.commonScore || 50,
+    };
+
+    leadMaxScoreInput = leadAllocation.maxScore;
+    chaseMaxScoreInput = chaseAllocation.maxScore;
+
     formError = "";
   }
 
@@ -111,8 +215,10 @@
     if (!open) return;
 
     if (mode === "update" && config) {
-      openTagKey = undefined;
-      loadConfig(config);
+      untrack(() => {
+        openTagKey = undefined;
+        loadConfig(config);
+      });
     } else {
       resetForm();
     }
@@ -156,6 +262,17 @@
               defaultValue: tag.defaultValue,
             }),
         ),
+        weighMaxScore,
+        scoreWeighs: new repository.ScoreWeighs({
+          lead: new repository.WeighAllocation({
+            maxScore: leadAllocation.maxScore,
+            commonScore: leadAllocation.commonScore,
+          }),
+          chase: new repository.WeighAllocation({
+            maxScore: chaseAllocation.maxScore,
+            commonScore: chaseAllocation.commonScore,
+          }),
+        }),
       });
     };
 
@@ -166,6 +283,17 @@
         common: toCategory("common"),
         lead: toCategory("lead"),
         chase: toCategory("chase"),
+      }),
+      weighMaxScore,
+      scoreWeighs: new repository.ScoreWeighs({
+        lead: new repository.WeighAllocation({
+          maxScore: leadAllocation.maxScore,
+          commonScore: leadAllocation.commonScore,
+        }),
+        chase: new repository.WeighAllocation({
+          maxScore: chaseAllocation.maxScore,
+          commonScore: chaseAllocation.commonScore,
+        }),
       }),
     });
   }
@@ -287,7 +415,7 @@
     </Dialog.Header>
 
     <form
-      class="space-y-6"
+      class="space-y-4"
       onsubmit={(event) => {
         event.preventDefault();
         submitConfig();
@@ -449,6 +577,93 @@
           {/each}
         </section>
       {/each}
+
+      <section class="space-y-4 rounded-lg border p-4">
+        <div class="flex items-center justify-between gap-4">
+          <div class="space-y-1">
+            <Label>Force score weighting</Label>
+            <p class="text-sm text-muted-foreground">
+              Keep the final judging score within the new maximum score. Scores
+              on every category are converted proportionally to fit the new
+              maximum score.
+            </p>
+          </div>
+
+          <Switch.Root bind:checked={weighMaxScore} />
+        </div>
+
+        {#if weighMaxScore}
+          <section class="space-y-6 rounded-lg border p-4">
+            <!-- Lead -->
+            <div class="space-y-3">
+              <div class="space-y-1">
+                <Label>Lead Score</Label>
+                <p class="text-sm text-muted-foreground">
+                  Configure the maximum score allocation for Lead.
+                </p>
+              </div>
+
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                bind:value={leadMaxScoreInput}
+                onblur={() => {
+                  const value = Math.max(
+                    0,
+                    Math.floor(Number(leadMaxScoreInput) || 0),
+                  );
+
+                  leadAllocation.maxScore = value;
+                  leadAllocation.commonScore = Math.min(
+                    leadAllocation.commonScore,
+                    value,
+                  );
+
+                  leadMaxScoreInput = value;
+                }}
+              />
+
+              <Partition parts={leadParts} onResize={updateLeadScore} />
+            </div>
+
+            <Separator />
+
+            <!-- Chase -->
+            <div class="space-y-3">
+              <div class="space-y-1">
+                <Label>Chase Score</Label>
+                <p class="text-sm text-muted-foreground">
+                  Configure the maximum score allocation for Chase.
+                </p>
+              </div>
+
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                bind:value={chaseMaxScoreInput}
+                onblur={() => {
+                  const value = Math.max(
+                    0,
+                    Math.floor(Number(chaseMaxScoreInput) || 0),
+                  );
+
+                  chaseAllocation.maxScore = value;
+                  chaseAllocation.commonScore = Math.min(
+                    chaseAllocation.commonScore,
+                    value,
+                  );
+
+                  chaseMaxScoreInput = value;
+                }}
+              />
+
+              <Partition parts={chaseParts} onResize={updateChaseScore} />
+            </div>
+          </section>
+        {/if}
+      </section>
 
       {#if formError}
         <p class="text-destructive text-sm">{formError}</p>

@@ -584,7 +584,7 @@ export namespace tournament {
 	    url: string;
 	    size: number;
 	    progress: number;
-	    qualifyingCriteriaConfig: string;
+	    qualifyingCriteriaConfig?: string;
 	    criteriaConfig: string;
 	    finalized: boolean;
 	    qualifyingRounds: number;

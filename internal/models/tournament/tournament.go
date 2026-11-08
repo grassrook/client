@@ -11,7 +11,7 @@ type Tournament struct {
 	URL                      string  `json:"url"`
 	Size                     int     `json:"size"`
 	Progress                 float64 `json:"progress"`
-	QualifyingCriteriaConfig string  `json:"qualifyingCriteriaConfig"`
+	QualifyingCriteriaConfig *string `json:"qualifyingCriteriaConfig"`
 	CriteriaConfig           string  `json:"criteriaConfig"`
 	Finalized                bool    `json:"finalized"`
 	QualifyingRounds         int     `json:"qualifyingRounds"`

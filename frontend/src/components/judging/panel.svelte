@@ -31,7 +31,7 @@
   const criteriaConfig = $derived(
     JSON.parse(
       tournament.status === "qualifying"
-        ? tournament.qualifyingCriteriaConfig
+        ? (tournament.qualifyingCriteriaConfig ?? tournament.criteriaConfig)
         : tournament.criteriaConfig,
     ) as repository.CriteriaCategories,
   );

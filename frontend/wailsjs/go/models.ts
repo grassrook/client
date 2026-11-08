@@ -552,6 +552,7 @@ export namespace tournament {
 	    size: number;
 	    startingDate: string;
 	    trackID: string;
+	    qualifyingCriteriaConfigID: number;
 	    criteriaConfigID: number;
 	    qualifyingRounds: number;
 	    randomizeQualifyingOrder: boolean;
@@ -566,6 +567,7 @@ export namespace tournament {
 	        this.size = source["size"];
 	        this.startingDate = source["startingDate"];
 	        this.trackID = source["trackID"];
+	        this.qualifyingCriteriaConfigID = source["qualifyingCriteriaConfigID"];
 	        this.criteriaConfigID = source["criteriaConfigID"];
 	        this.qualifyingRounds = source["qualifyingRounds"];
 	        this.randomizeQualifyingOrder = source["randomizeQualifyingOrder"];
@@ -582,6 +584,7 @@ export namespace tournament {
 	    url: string;
 	    size: number;
 	    progress: number;
+	    qualifyingCriteriaConfig?: string;
 	    criteriaConfig: string;
 	    finalized: boolean;
 	    qualifyingRounds: number;
@@ -606,6 +609,7 @@ export namespace tournament {
 	        this.url = source["url"];
 	        this.size = source["size"];
 	        this.progress = source["progress"];
+	        this.qualifyingCriteriaConfig = source["qualifyingCriteriaConfig"];
 	        this.criteriaConfig = source["criteriaConfig"];
 	        this.finalized = source["finalized"];
 	        this.qualifyingRounds = source["qualifyingRounds"];

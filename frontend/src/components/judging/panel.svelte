@@ -29,7 +29,11 @@
   } = $props();
 
   const criteriaConfig = $derived(
-    JSON.parse(tournament.criteriaConfig) as repository.CriteriaCategories,
+    JSON.parse(
+      tournament.status === "qualifying"
+        ? (tournament.qualifyingCriteriaConfig ?? tournament.criteriaConfig)
+        : tournament.criteriaConfig,
+    ) as repository.CriteriaCategories,
   );
 
   const categories = $derived(Object.entries(criteriaConfig));

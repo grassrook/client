@@ -40,7 +40,11 @@
   let trackID = $state("");
 
   let randomizeQualifyingOrder = $state(true);
+
+  let separateCriteriaConfigs = $state(false);
+  let qualifyingCriteriaConfigID = $state<number | undefined>(undefined);
   let criteriaConfigID = $state<number | undefined>(undefined);
+
   let datePopoverOpen = $state(false);
   let qualifyingRounds = $state<"1" | "2">("1"); // qualifying rounds in most drifting events is mostly up to 2 rounds
 
@@ -66,6 +70,7 @@
       startingDate,
       trackID,
       randomizeQualifyingOrder,
+      qualifyingCriteriaConfigID,
       criteriaConfigID,
     }: {
       name: string;
@@ -73,6 +78,7 @@
       startingDate: string;
       trackID: string;
       randomizeQualifyingOrder: boolean;
+      qualifyingCriteriaConfigID?: number;
       criteriaConfigID: number;
     }) => {
       await CreateTournament({
@@ -81,6 +87,11 @@
         startingDate,
         trackID,
         randomizeQualifyingOrder,
+        // use main criteira config if we dont explicitly say we use different
+        // config for qualifying
+        qualifyingCriteriaConfigID: separateCriteriaConfigs
+          ? qualifyingCriteriaConfigID!
+          : criteriaConfigID,
         criteriaConfigID,
         qualifyingRounds: Number(qualifyingRounds),
       });
@@ -89,12 +100,14 @@
       await queryClient.invalidateQueries({
         queryKey: ["tournaments"],
       });
+
       open = false;
       name = "";
       selectedDate = undefined;
       startingTime = "12:00";
       trackID = "";
       error = "";
+      qualifyingCriteriaConfigID = undefined;
       criteriaConfigID = undefined;
       qualifyingRounds = "1";
     },
@@ -125,7 +138,12 @@
     }
 
     if (!criteriaConfigID) {
-      error = "Criteria config is required";
+      error = "Battle criteria configuration is required.";
+      return;
+    }
+
+    if (separateCriteriaConfigs && !qualifyingCriteriaConfigID) {
+      error = "Qualifying criteria config is required.";
       return;
     }
 
@@ -135,6 +153,7 @@
       startingDate,
       trackID,
       randomizeQualifyingOrder,
+      qualifyingCriteriaConfigID,
       criteriaConfigID,
     });
   }
@@ -287,34 +306,106 @@
           </Select.Content>
         </Select.Root>
       </div>
-      <div class="space-y-2">
-        <Label for="criteria-config">Criteria configuration</Label>
 
-        <Select.Root
-          type="single"
-          value={criteriaConfigID?.toString() ?? ""}
-          onValueChange={(value) => {
-            criteriaConfigID = value ? Number(value) : undefined;
-          }}
-        >
-          <Select.Trigger id="criteria-config" class="w-full">
-            {#if criteriaConfigsQuery.isPending}
-              Loading criteria configurations...
-            {:else}
-              {criteriaConfigsQuery.data?.find(
-                (config) => config.id === criteriaConfigID,
-              )?.name ?? "Select a criteria configuration"}
-            {/if}
-          </Select.Trigger>
+      <div class="space-y-4">
+        {#if separateCriteriaConfigs}
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <Label for="qualifying-criteria-config">
+                Qualifying Criteria Config
+              </Label>
 
-          <Select.Content>
-            {#each criteriaConfigsQuery.data ?? [] as config (config.id)}
-              <Select.Item value={config.id.toString()}>
-                {config.name}
-              </Select.Item>
-            {/each}
-          </Select.Content>
-        </Select.Root>
+              <Select.Root
+                type="single"
+                value={qualifyingCriteriaConfigID?.toString() ?? ""}
+                onValueChange={(value) => {
+                  qualifyingCriteriaConfigID = value
+                    ? Number(value)
+                    : undefined;
+                }}
+              >
+                <Select.Trigger id="qualifying-criteria-config" class="w-full">
+                  {#if criteriaConfigsQuery.isPending}
+                    Loading criteria configurations...
+                  {:else}
+                    {criteriaConfigsQuery.data?.find(
+                      (config) => config.id === qualifyingCriteriaConfigID,
+                    )?.name ?? "Select a config"}
+                  {/if}
+                </Select.Trigger>
+
+                <Select.Content>
+                  {#each criteriaConfigsQuery.data ?? [] as config (config.id)}
+                    <Select.Item value={config.id.toString()}>
+                      {config.name}
+                    </Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="battle-criteria-config">Battle Criteria Config</Label>
+
+              <Select.Root
+                type="single"
+                value={criteriaConfigID?.toString() ?? ""}
+                onValueChange={(value) => {
+                  criteriaConfigID = value ? Number(value) : undefined;
+                }}
+              >
+                <Select.Trigger id="battle-criteria-config" class="w-full">
+                  {#if criteriaConfigsQuery.isPending}
+                    Loading criteria configurations...
+                  {:else}
+                    {criteriaConfigsQuery.data?.find(
+                      (config) => config.id === criteriaConfigID,
+                    )?.name ?? "Select a config"}
+                  {/if}
+                </Select.Trigger>
+
+                <Select.Content>
+                  {#each criteriaConfigsQuery.data ?? [] as config (config.id)}
+                    <Select.Item value={config.id.toString()}>
+                      {config.name}
+                    </Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            </div>
+          </div>
+        {:else}
+          <div class="space-y-2">
+            <Label for="criteria-config">Criteria Config</Label>
+
+            <Select.Root
+              type="single"
+              value={criteriaConfigID?.toString() ?? ""}
+              onValueChange={(value) => {
+                criteriaConfigID = value ? Number(value) : undefined;
+              }}
+            >
+              <Select.Trigger id="criteria-config" class="w-full">
+                {#if criteriaConfigsQuery.isPending}
+                  Loading criteria configurations...
+                {:else}
+                  {criteriaConfigsQuery.data?.find(
+                    (config) => config.id === criteriaConfigID,
+                  )?.name ?? "Select a config"}
+                {/if}
+              </Select.Trigger>
+
+              <Select.Content>
+                {#each criteriaConfigsQuery.data ?? [] as config (config.id)}
+                  <Select.Item value={config.id.toString()}>
+                    {config.name}
+                  </Select.Item>
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          </div>
+        {/if}
+
         {#if criteriaConfigsQuery.isError}
           <p class="text-sm text-destructive">
             Failed to load criteria configurations.
@@ -326,7 +417,15 @@
           </p>
         {/if}
       </div>
-
+      <div class="flex items-center justify-between">
+        <Label for="separate-criteria-configs">
+          Separate qualifying and battle config
+        </Label>
+        <Switch
+          id="separate-criteria-configs"
+          bind:checked={separateCriteriaConfigs}
+        />
+      </div>
       <div class="flex items-center justify-between gap-4 py-2.5">
         <Label>Randomize Qualifying Order</Label>
         <Switch bind:checked={randomizeQualifyingOrder} />

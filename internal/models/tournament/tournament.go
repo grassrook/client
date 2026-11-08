@@ -11,6 +11,7 @@ type Tournament struct {
 	URL                      string  `json:"url"`
 	Size                     int     `json:"size"`
 	Progress                 float64 `json:"progress"`
+	QualifyingCriteriaConfig string  `json:"qualifyingCriteriaConfig"`
 	CriteriaConfig           string  `json:"criteriaConfig"`
 	Finalized                bool    `json:"finalized"`
 	QualifyingRounds         int     `json:"qualifyingRounds"`
@@ -21,11 +22,16 @@ type Tournament struct {
 }
 
 type CreateRequest struct {
-	Name                     string `json:"name"`
-	Size                     int    `json:"size"`
-	StartingDate             string `json:"startingDate"`
-	TrackID                  string `json:"trackID"`
-	CriteriaConfigID         int    `json:"criteriaConfigID"`
-	QualifyingRounds         int    `json:"qualifyingRounds"`
-	RandomizeQualifyingOrder bool   `json:"randomizeQualifyingOrder"`
+	Name         string `json:"name"`
+	Size         int    `json:"size"`
+	StartingDate string `json:"startingDate"`
+	TrackID      string `json:"trackID"`
+
+	// Qualifying specific criteria config
+	QualifyingCriteriaConfigID int `json:"qualifyingCriteriaConfigID"`
+	// Main/battle criteria config
+	CriteriaConfigID int `json:"criteriaConfigID"`
+
+	QualifyingRounds         int  `json:"qualifyingRounds"`
+	RandomizeQualifyingOrder bool `json:"randomizeQualifyingOrder"`
 }

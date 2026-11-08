@@ -112,14 +112,22 @@ SELECT config from criteria_configs WHERE id = ?
 		return nil, err
 	}
 
+	var qualifyingCriteriaConfig string
+	err = tx.QueryRowContext(ctx, `
+SELECT config from criteria_configs WHERE id = ?
+`, req.QualifyingCriteriaConfigID).Scan(&qualifyingCriteriaConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	// tournaments table
 	var t tournament.Tournament
 
 	err = tx.QueryRowContext(ctx, `
 INSERT INTO tournaments (
     id, name, starting_date, track_id, qualifying_order,
-    size, randomize_qualifying_order, status, created_at, updated_at, criteria_config, qualifying_rounds
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    size, randomize_qualifying_order, status, created_at, updated_at, criteria_config, qualifying_criteria_config, qualifying_rounds
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id, name, starting_date, track_id, qualifying_order,
           size, status, created_at, updated_at, criteria_config, qualifying_rounds
 `,
@@ -134,6 +142,7 @@ RETURNING id, name, starting_date, track_id, qualifying_order,
 		now,
 		now,
 		criteriaConfig,
+		qualifyingCriteriaConfig,
 		req.QualifyingRounds,
 	).Scan(
 		&t.ID,
@@ -632,6 +641,7 @@ SELECT
 	t1.size,
 	t1.status,
 	t3.url,
+	t1.qualifying_criteria_config,
 	t1.criteria_config,
 	t1.qualifying_rounds,
 	t1.randomize_qualifying_order,
@@ -652,6 +662,7 @@ WHERE t1.id = ?
 		&t.Size,
 		&t.Status,
 		&t.URL,
+		&t.QualifyingCriteriaConfig,
 		&t.CriteriaConfig,
 		&t.QualifyingRounds,
 		&t.RandomizeQualifyingOrder,

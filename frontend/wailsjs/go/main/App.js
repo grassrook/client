@@ -154,6 +154,10 @@ export function ListCarMakes() {
   return window['go']['main']['App']['ListCarMakes']();
 }
 
+export function ReplaceParticipant(arg1, arg2) {
+  return window['go']['main']['App']['ReplaceParticipant'](arg1, arg2);
+}
+
 export function ResetBattle(arg1, arg2) {
   return window['go']['main']['App']['ResetBattle'](arg1, arg2);
 }

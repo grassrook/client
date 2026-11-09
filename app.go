@@ -86,7 +86,8 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.participantsRepo = &repository.SQLiteParticipantsRepository{
-		DB: client,
+		DB:              client,
+		ChallongeAPIKey: a.cfg.ChallongeApiKey,
 	}
 
 	a.entrantsRepo = &repository.SQLiteEntrantsRepository{
@@ -350,6 +351,10 @@ func (a *App) SyncTournament(id string) error {
 		return err
 	}
 	return nil
+}
+
+func (a *App) ReplaceParticipant(from, to string) error {
+	return a.participantsRepo.ReplaceParticipant(a.ctx, from, to)
 }
 
 // -- Tracks --

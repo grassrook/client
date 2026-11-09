@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArrowLeftRightIcon from "@lucide/svelte/icons/arrow-left-right";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical";
   import PlusIcon from "@lucide/svelte/icons/plus";
@@ -20,6 +21,7 @@
     GetDriverCarList,
     GetDrivers,
     InsertBulkParticipant,
+    ReplaceParticipant,
     UpdateParticipantCar,
     UpdateTournament,
   } from "$wails/go/main/App";
@@ -28,10 +30,11 @@
   type Props = {
     tournament: tournament.Tournament;
     entrants: entrant.Entrant[];
+    matches: Tournament.GroupedMatches;
     onDelete?: (entrant: entrant.Entrant) => void | Promise<void>;
   };
 
-  let { tournament, entrants }: Props = $props();
+  let { tournament, entrants, matches }: Props = $props();
 
   const queryClient = useQueryClient();
 
@@ -194,6 +197,23 @@
       await queryClient.invalidateQueries({
         queryKey: ["tournament", tournament.id],
       });
+    },
+  }));
+
+  const replaceParticipantMutation = createMutation(() => ({
+    mutationFn: async ({ from, to }: { from: string; to: string }) =>
+      ReplaceParticipant(from, to),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["matches", tournament.id] }),
+        queryClient.invalidateQueries({
+          queryKey: ["activeBattles", tournament.id],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["entrants", tournament.id],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["logs", tournament.id] }),
+      ]);
     },
   }));
 
@@ -361,6 +381,59 @@
 
     await navigator.clipboard.writeText(names.join("\n"));
   }
+
+  // ---------- replace dialog ----------
+  let replaceTarget = $state<entrant.Entrant | null>(null);
+  let replacementId = $state("");
+
+  const replaceOpen = $derived(replaceTarget !== null);
+
+  const bracketParticipantIds = $derived(
+    new Set(
+      matches
+        .flat(2)
+        .map((match) => match.participantId)
+        .filter((id): id is string => !!id),
+    ),
+  );
+
+  // only participants who are NOT in the bracket can be swapped in
+  const replacementOptions = $derived(
+    items.filter((e) => !bracketParticipantIds.has(e.participantId)),
+  );
+
+  const replacement = $derived(
+    replacementOptions.find((e) => e.participantId === replacementId),
+  );
+
+  // Replacing only changes the qualifying order, which elimination ignores.
+  const canReplace = $derived(
+    tournament.status === "elimination" && items.length > 1,
+  );
+
+  const showActions = $derived(editable || canReplace);
+
+  function openReplace(entrant: entrant.Entrant) {
+    replaceTarget = entrant;
+    replacementId = "";
+  }
+
+  function closeReplace() {
+    replaceTarget = null;
+    replacementId = "";
+  }
+
+  function confirmReplace() {
+    if (!replaceTarget || !replacement) return;
+
+    replaceParticipantMutation.mutate(
+      {
+        from: replaceTarget.participantId,
+        to: replacement.participantId,
+      },
+      { onSuccess: closeReplace },
+    );
+  }
 </script>
 
 <div class="mr-0 lg:mr-80">
@@ -447,8 +520,8 @@
                 <Table.Head class={!editable ? "text-left" : ""}>
                   Registered car
                 </Table.Head>
-                {#if editable}
-                  <Table.Head class="w-16 text-right">Actions</Table.Head>
+                {#if showActions}
+                  <Table.Head class="w-24 text-right">Actions</Table.Head>
                 {/if}
               </Table.Row>
             </Table.Header>
@@ -462,6 +535,7 @@
                   ondragend={resetDrag}
                   class={[
                     "transition-colors",
+                    dragIndex === index && "opacity-40",
                     dragIndex === index && "opacity-40",
                     overIndex === index &&
                       dragIndex !== null &&
@@ -543,16 +617,28 @@
                       >
                     {/if}
                   </Table.Cell>
-                  {#if editable}
+                  {#if showActions}
                     <Table.Cell class="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${entrant.name}`}
-                        onclick={() => (deleteTarget = entrant)}
-                      >
-                        <Trash2Icon class="size-4 text-destructive" />
-                      </Button>
+                      {#if canReplace && bracketParticipantIds.has(entrant.participantId)}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Replace ${entrant.name}`}
+                          onclick={() => openReplace(entrant)}
+                        >
+                          <ArrowLeftRightIcon class="size-4" />
+                        </Button>
+                      {/if}
+                      {#if editable}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Delete ${entrant.name}`}
+                          onclick={() => (deleteTarget = entrant)}
+                        >
+                          <Trash2Icon class="size-4 text-destructive" />
+                        </Button>
+                      {/if}
                     </Table.Cell>
                   {/if}
                 </Table.Row>
@@ -565,6 +651,7 @@
   </div>
 </div>
 
+<!-- create participants dialog -->
 {#if editable}
   <!-- create participants -->
   <Dialog.Root bind:open={createOpen}>
@@ -713,6 +800,61 @@
           disabled={deleting}
         >
           {deleting ? "Deleting..." : "Delete"}
+        </Button>
+      </Dialog.Footer>
+    </Dialog.Content>
+  </Dialog.Root>
+{/if}
+
+{#if canReplace}
+  <Dialog.Root
+    open={replaceOpen}
+    onOpenChange={(open) => {
+      if (!open) closeReplace();
+    }}
+  >
+    <Dialog.Content class="sm:max-w-sm">
+      <Dialog.Header>
+        <Dialog.Title>Replace participant</Dialog.Title>
+        <Dialog.Description>
+          Replace
+          <span class="font-medium text-foreground">{replaceTarget?.name}</span>
+          in the bracket with another participant. To undo this later, replace them
+          back the same way.
+        </Dialog.Description>
+      </Dialog.Header>
+
+      <Select.Root type="single" bind:value={replacementId}>
+        <Select.Trigger class="w-full">
+          {replacement?.name ?? "Select a participant"}
+        </Select.Trigger>
+        <Select.Content>
+          {#each replacementOptions as option (option.participantId)}
+            <Select.Item value={option.participantId}>{option.name}</Select.Item
+            >
+          {/each}
+        </Select.Content>
+      </Select.Root>
+
+      {#if replaceParticipantMutation.isError}
+        <p class="text-sm text-destructive">
+          {replaceParticipantMutation.error?.message ?? "Failed to replace."}
+        </p>
+      {/if}
+
+      <Dialog.Footer>
+        <Button
+          variant="outline"
+          onclick={closeReplace}
+          disabled={replaceParticipantMutation.isPending}
+        >
+          Cancel
+        </Button>
+        <Button
+          onclick={confirmReplace}
+          disabled={!replacement || replaceParticipantMutation.isPending}
+        >
+          {replaceParticipantMutation.isPending ? "Replacing..." : "Replace"}
         </Button>
       </Dialog.Footer>
     </Dialog.Content>

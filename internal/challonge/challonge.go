@@ -295,3 +295,56 @@ func GetMatches(
 
 	return result.Data, nil
 }
+
+func UpdateParticipantName(ctx context.Context, apiKey, tournamentID, participantID, name string) error {
+	url := fmt.Sprintf(
+		"https://api.challonge.com/v2.1/tournaments/%s/participants/%s.json",
+		tournamentID,
+		participantID,
+	)
+
+	payload := map[string]any{
+		"data": map[string]any{
+			"type": "participant",
+			"attributes": map[string]any{
+				"name": name,
+			},
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization-Type", "v1")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/vnd.api+json")
+	req.Header.Set("Authorization", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("update Challonge participant: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		if resp.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("[UpdateParticipantName] Challonge participant %s in tournament %s not found", participantID, tournamentID)
+		}
+
+		return fmt.Errorf("Challonge returned HTTP %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
+}

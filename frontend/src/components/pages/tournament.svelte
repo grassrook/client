@@ -121,6 +121,7 @@
         <RegisteredParticipants
           {tournament}
           entrants={entrantsQuery.data ?? []}
+          matches={matchesQuery.data ?? []}
         />
 
         {#if tournament.status === "qualifying" || tournament.status === "elimination"}

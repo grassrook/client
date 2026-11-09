@@ -2,6 +2,7 @@
   import ArrowLeftRightIcon from "@lucide/svelte/icons/arrow-left-right";
   import GripVerticalIcon from "@lucide/svelte/icons/grip-vertical";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
+  import UserIcon from "@lucide/svelte/icons/user";
 
   import { Button } from "$src/components/ui/button/index.js";
   import * as Table from "$src/components/ui/table/index.js";
@@ -123,7 +124,17 @@
           {/if}
 
           <Table.Cell class="text-muted-foreground">{index + 1}</Table.Cell>
-          <Table.Cell class="font-medium">{entrant.name}</Table.Cell>
+          <Table.Cell class="font-medium">
+            <div class="flex items-center gap-3">
+              <!-- placeholder profile picture -->
+              <div
+                class="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              >
+                <UserIcon class="size-4" />
+              </div>
+              <span>{entrant.name}</span>
+            </div>
+          </Table.Cell>
 
           {#if isElimination}
             <Table.Cell class="text-left tabular-nums font-medium">
@@ -131,7 +142,7 @@
             </Table.Cell>
           {/if}
 
-          <Table.Cell class={!editable ? "text-right" : ""}>
+          <Table.Cell>
             {#if entrant.driverId}
               <ParticipantCarSelect
                 tournamentId={tournament.id}

@@ -86,7 +86,7 @@ export function InsertBulkParticipant(arg1:string,arg2:Array<string>):Promise<Ar
 
 export function ListCarMakes():Promise<Array<car.CarMake>>;
 
-export function ReplaceParticipant(arg1:string,arg2:string):Promise<void>;
+export function ReplaceParticipant(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ResetBattle(arg1:string,arg2:string):Promise<void>;
 

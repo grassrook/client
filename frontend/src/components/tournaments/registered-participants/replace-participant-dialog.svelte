@@ -32,7 +32,7 @@
 
   const replaceParticipantMutation = createMutation(() => ({
     mutationFn: async ({ from, to }: { from: string; to: string }) =>
-      ReplaceParticipant(from, to),
+      ReplaceParticipant(tournamentId, from, to),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["matches", tournamentId] }),

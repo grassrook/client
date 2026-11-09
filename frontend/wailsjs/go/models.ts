@@ -171,7 +171,7 @@ export namespace participant {
 	    id: string;
 	    name: string;
 	    tournament_id: string;
-	    ChallongeParticipantID: string;
+	    ChallongeParticipantID?: string;
 	    driverID: string;
 	    registeredCarID: string;
 	    created_at: number;

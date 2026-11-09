@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"judginginternal/internal/challonge"
+	"judginginternal/internal/models/participant"
 	"time"
 )
 
 type ParticipantsRepo interface {
 	UpdateRegisteredCar(ctx context.Context, participantID string, registeredCarID string) error
-	ReplaceParticipant(ctx context.Context, from string, to string) error
+	ReplaceParticipant(ctx context.Context, from string, to string) (participant.ReplaceParticipantResult, error)
 }
 
 type SQLiteParticipantsRepository struct {
@@ -38,65 +39,95 @@ func (r *SQLiteParticipantsRepository) UpdateRegisteredCar(ctx context.Context, 
 	return err
 }
 
-func (r *SQLiteParticipantsRepository) ReplaceParticipant(ctx context.Context, from, to string) error {
+type rowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func getParticipant(ctx context.Context, q rowQuerier, id string) (participant.Participant, error) {
+	var p participant.Participant
+	var tournamentID, challongeID sql.NullString
+
+	err := q.QueryRowContext(ctx,
+		`SELECT id, name, tournament_id, challonge_participant_id FROM participants WHERE id = ?`, id,
+	).Scan(&p.ID, &p.Name, &tournamentID, &challongeID)
+	if err != nil {
+		return participant.Participant{}, err
+	}
+
+	p.TournamentID = tournamentID.String
+	if challongeID.Valid {
+		p.ChallongeParticipantID = &challongeID.String
+	}
+
+	return p, nil
+}
+
+func (r *SQLiteParticipantsRepository) ReplaceParticipant(ctx context.Context, from, to string) (participant.ReplaceParticipantResult, error) {
+	var result participant.ReplaceParticipantResult
+
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
+		return result, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE nodes SET participant_id = ? WHERE participant_id = ?`, to, from,
 	); err != nil {
-		return fmt.Errorf("update nodes.participant_id: %w", err)
+		return result, fmt.Errorf("update nodes.participant_id: %w", err)
 	}
 
-	var challongeID, tournamentID sql.NullString
-	if err := tx.QueryRowContext(ctx,
-		`SELECT challonge_participant_id, tournament_id FROM participants WHERE id = ?`, from,
-	).Scan(&challongeID, &tournamentID); err != nil {
-		return fmt.Errorf("load from participant %s: %w", from, err)
+	// state of `from` before the Challonge ID is moved
+	before, err := getParticipant(ctx, tx, from)
+	if err != nil {
+		return result, fmt.Errorf("load from participant %s: %w", from, err)
 	}
 
 	var challongeTournamentURL sql.NullString
-	if tournamentID.Valid {
+	if before.TournamentID != "" {
 		err := tx.QueryRowContext(ctx,
-			`SELECT url FROM brackets WHERE tournament_id = ? LIMIT 1`, tournamentID.String,
+			`SELECT url FROM brackets WHERE tournament_id = ? LIMIT 1`, before.TournamentID,
 		).Scan(&challongeTournamentURL)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("load bracket url for tournament %s: %w", tournamentID.String, err)
+			return result, fmt.Errorf("load bracket url for tournament %s: %w", before.TournamentID, err)
 		}
-	}
-
-	var toName string
-	if err := tx.QueryRowContext(ctx,
-		`SELECT name FROM participants WHERE id = ?`, to,
-	).Scan(&toName); err != nil {
-		return fmt.Errorf("load to participant %s: %w", to, err)
 	}
 
 	if _, err := tx.ExecContext(ctx,
 		`UPDATE participants SET challonge_participant_id = NULL WHERE id = ?`, from,
 	); err != nil {
-		return fmt.Errorf("clear challonge id on %s: %w", from, err)
+		return result, fmt.Errorf("clear challonge id on %s: %w", from, err)
 	}
-	if challongeID.Valid {
+	if before.ChallongeParticipantID != nil {
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE participants SET challonge_participant_id = ? WHERE id = ?`, challongeID.String, to,
+			`UPDATE participants SET challonge_participant_id = ? WHERE id = ?`,
+			before.ChallongeParticipantID, to,
 		); err != nil {
-			return fmt.Errorf("set challonge id on %s: %w", to, err)
+			return result, fmt.Errorf("set challonge id on %s: %w", to, err)
 		}
+	}
+
+	// load both participants in their final state
+	if result.From, err = getParticipant(ctx, tx, from); err != nil {
+		return participant.ReplaceParticipantResult{}, fmt.Errorf("reload from participant %s: %w", from, err)
+	}
+	if result.To, err = getParticipant(ctx, tx, to); err != nil {
+		return participant.ReplaceParticipantResult{}, fmt.Errorf("load to participant %s: %w", to, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
+		return participant.ReplaceParticipantResult{}, fmt.Errorf("commit: %w", err)
 	}
 
-	if challongeID.Valid && challongeTournamentURL.Valid && challongeTournamentURL.String != "" {
-		if err := challonge.UpdateParticipantName(ctx, r.ChallongeAPIKey, challongeTournamentURL.String, challongeID.String, toName); err != nil {
-			return fmt.Errorf("DB updated but Challonge rename failed: %w", err)
+	if result.To.ChallongeParticipantID != nil && challongeTournamentURL.Valid && challongeTournamentURL.String != "" {
+		if err := challonge.UpdateParticipantName(
+			ctx, r.ChallongeAPIKey, challongeTournamentURL.String,
+			*result.To.ChallongeParticipantID, result.To.Name,
+		); err != nil {
+			// the DB is already committed, so still return the result
+			return result, fmt.Errorf("DB updated but Challonge rename failed: %w", err)
 		}
 	}
 
-	return nil
+	return result, nil
 }

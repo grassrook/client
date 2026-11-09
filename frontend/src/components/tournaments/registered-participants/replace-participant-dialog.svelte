@@ -21,6 +21,11 @@
 
   let replacementId = $state("");
 
+  // highest score first; ties keep their original order (sort is stable)
+  const sortedOptions = $derived(
+    [...options].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+  );
+
   const replacement = $derived(
     options.find((e) => e.participantId === replacementId),
   );
@@ -77,8 +82,15 @@
         {replacement?.name ?? "Select a participant"}
       </Select.Trigger>
       <Select.Content>
-        {#each options as option (option.participantId)}
-          <Select.Item value={option.participantId}>{option.name}</Select.Item>
+        {#each sortedOptions as option (option.participantId)}
+          <Select.Item value={option.participantId}>
+            <span class="flex flex-col items-start leading-tight">
+              <span class="font-medium">{option.name}</span>
+              <span class="text-xs text-muted-foreground tabular-nums">
+                Score: {option.score ?? 0}
+              </span>
+            </span>
+          </Select.Item>
         {/each}
       </Select.Content>
     </Select.Root>

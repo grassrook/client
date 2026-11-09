@@ -86,7 +86,8 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.participantsRepo = &repository.SQLiteParticipantsRepository{
-		DB: client,
+		DB:              client,
+		ChallongeAPIKey: a.cfg.ChallongeApiKey,
 	}
 
 	a.entrantsRepo = &repository.SQLiteEntrantsRepository{
@@ -350,6 +351,22 @@ func (a *App) SyncTournament(id string) error {
 		return err
 	}
 	return nil
+}
+
+func (a *App) ReplaceParticipant(tournamentID, from, to string) error {
+	res, err := a.participantsRepo.ReplaceParticipant(a.ctx, from, to)
+	if err != nil {
+		a.logError("ReplaceParticipant", err)
+		return err
+	}
+
+	log := tournamentactivitylog.CreateTournamentActivityLogInput{
+		TournamentID: tournamentID,
+		Content:      fmt.Sprintf("%s took over %s's spot in the bracket", res.To.Name, res.From.Name),
+		LogType:      tournamentactivitylog.REPLACE_PARTICIPANTS,
+	}
+
+	return a.tournamentActivityLogsRepo.Create(a.ctx, log)
 }
 
 // -- Tracks --

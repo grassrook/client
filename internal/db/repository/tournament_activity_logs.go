@@ -12,15 +12,8 @@ import (
 type TournamentActivityLogsRepository interface {
 	Create(ctx context.Context, input tournamentactivitylog.CreateTournamentActivityLogInput) error
 	GetByID(ctx context.Context, id string) (*tournamentactivitylog.TournamentActivityLog, error)
-	GetByTournamentID(
-		ctx context.Context,
-		tournamentID string,
-	) ([]tournamentactivitylog.TournamentActivityLog, error)
-	GetByTournamentIDAndType(
-		ctx context.Context,
-		tournamentID string,
-		logType string,
-	) ([]tournamentactivitylog.TournamentActivityLog, error)
+	GetByTournamentID(ctx context.Context, tournamentID string) ([]tournamentactivitylog.TournamentActivityLog, error)
+	GetByTournamentIDAndType(ctx context.Context, tournamentID string, logType string) ([]tournamentactivitylog.TournamentActivityLog, error)
 	Delete(ctx context.Context, id string) error
 }
 

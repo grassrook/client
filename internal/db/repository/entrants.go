@@ -123,8 +123,9 @@ func (r *SQLiteEntrantsRepository) UpdateEntrant(
             WHEN ? >= COALESCE(
                 (
                     SELECT MAX(qs.score)
-                    FROM qualifying_scores qs
-                    WHERE qs.tournament_id = entrants.tournament_id
+                    FROM scores qs
+                    WHERE qs.kind = "qualifying"
+											AND qs.tournament_id = entrants.tournament_id
                       AND qs.participant_id = entrants.participant_id
                 ),
                 -1

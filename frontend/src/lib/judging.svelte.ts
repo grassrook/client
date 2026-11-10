@@ -1,6 +1,6 @@
 import type { repository } from "$wails/go/models";
 
-type Result = {
+export type Result = {
   lead?: number;
   chase?: number;
 };

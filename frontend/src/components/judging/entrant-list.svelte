@@ -25,7 +25,11 @@
     UpdateTournament,
     UpdateTournamentState,
   } from "$wails/go/main/App";
-  import type { entrant, tournament } from "$wails/go/models";
+  import {
+    type entrant,
+    qualifyingscore,
+    type tournament,
+  } from "$wails/go/models";
 
   import AlertDialog from "../ui/alert-dialog/alert-dialog.svelte";
   import AlertDialogAction from "../ui/alert-dialog/alert-dialog-action.svelte";
@@ -169,7 +173,16 @@
 
     await Promise.all(
       Array.from({ length: qualifyingRounds }, (_, i) =>
-        UpdateQualifyingScore(tournament.id, participantID, i + 1, 0, "scored"),
+        UpdateQualifyingScore(
+          new qualifyingscore.UpdateQualifyingScoreParams({
+            TournamentID: tournament.id,
+            ParticipantID: participantID,
+            Round: i + 1,
+            Score: 0,
+            Status: "scored",
+            Results: {},
+          }),
+        ),
       ),
     );
 
@@ -184,11 +197,14 @@
     await Promise.all(
       Array.from({ length: qualifyingRounds }, (_, i) =>
         UpdateQualifyingScore(
-          tournament.id,
-          participantID,
-          i + 1,
-          0,
-          "pending",
+          new qualifyingscore.UpdateQualifyingScoreParams({
+            TournamentID: tournament.id,
+            ParticipantID: participantID,
+            Round: i + 1,
+            Score: 0,
+            Status: "pending",
+            Results: {},
+          }),
         ),
       ),
     );
@@ -286,7 +302,9 @@
     let finalOrdered = [...uniqueOrdered, ...unlistedEntrants];
 
     const allEntrantsProcessed = finalOrdered.every(
-      (entrant) => entrant.status !== "pending",
+      (entrant) =>
+        entrant.scores.length > 0 &&
+        entrant.scores.every((score) => score.status === "scored"),
     );
 
     if (tournament.status === "elimination" || allEntrantsProcessed) {
@@ -302,7 +320,11 @@
 
   const concluding = $derived(
     orderedEntrants.entrants.length > 0 &&
-      orderedEntrants.entrants.every((entrant) => entrant.status !== "pending"),
+      orderedEntrants.entrants.every(
+        (entrant) =>
+          entrant.scores.length > 0 &&
+          entrant.scores.every((score) => score.status === "scored"),
+      ),
   );
 
   $effect(() => {

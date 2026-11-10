@@ -20,3 +20,19 @@ type Data struct {
 	ParticipantID string      `json:"participantId"`
 	Scores        []ScoreData `json:"scores"` // each indices represent round
 }
+
+type Result struct {
+	Lead  *float64 `json:"lead,omitempty"`
+	Chase *float64 `json:"chase,omitempty"`
+}
+
+type Results map[string]Result
+
+type UpdateQualifyingScoreParams struct {
+	TournamentID  string
+	ParticipantID string
+	Round         int
+	Score         float64
+	Status        string
+	Results       Results
+}

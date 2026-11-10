@@ -5,7 +5,7 @@
     useQueryClient,
   } from "@tanstack/svelte-query";
 
-  import type { Judgement } from "$src/lib/judging.svelte";
+  import type { Judgement, Result } from "$src/lib/judging.svelte";
   import {
     CreateTournamentActivityLog,
     GetAllQualifyingScores,
@@ -13,7 +13,11 @@
     UpdateQualifyingScore,
     UpdateTournament,
   } from "$wails/go/main/App";
-  import type { entrant, tournament } from "$wails/go/models";
+  import {
+    type entrant,
+    qualifyingscore,
+    type tournament,
+  } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
 
@@ -127,11 +131,13 @@
     submitting = true;
 
     try {
-      const { lead } = judgement.finalizedScore();
-
-      await handleQualifying(lead);
-
+      await handleQualifying(
+        judgement.finalizedScore().lead, // lead score only since qualifying is most likely using lead criteria
+        judgement.results,
+      );
       judgement.clear();
+    } catch (error) {
+      console.error("onSubmitJudgement", error);
     } finally {
       submitting = false;
       judgement.processing = false;
@@ -141,7 +147,7 @@
   type QualifyingRound = "1" | "2";
   let qualifyingRound = $state<QualifyingRound>("1");
 
-  async function handleQualifying(score: number) {
+  async function handleQualifying(score: number, results: Result) {
     const front = orderedEntrants[0];
     let order = tournament.qualifying_order.split(",").map((id) => id.trim());
 
@@ -160,12 +166,17 @@
       qualifyingOrder: order,
     });
 
+    console.log(orderedEntrants);
+
     await UpdateQualifyingScore(
-      tournament.id,
-      front.participantId,
-      Number(qualifyingRound),
-      score,
-      "scored",
+      new qualifyingscore.UpdateQualifyingScoreParams({
+        TournamentID: tournament.id,
+        ParticipantID: front.participantId,
+        Round: Number(qualifyingRound),
+        Score: score,
+        Status: "scored",
+        Results: results,
+      }),
     );
 
     await updateEntrantMutation.mutateAsync({
@@ -185,6 +196,23 @@
       (data) => data.participantId === orderedEntrants[0]?.participantId,
     )?.scores ?? [],
   );
+
+  // using initialized state instead of onMount because frontScores data
+  // comes after the page is mounted
+  let initialized = $state(false);
+  $effect(() => {
+    if (initialized || frontScores.length === 0) return;
+
+    const nextRound = frontScores.findIndex(
+      (score) => score.status !== "scored",
+    );
+
+    if (nextRound !== -1) {
+      qualifyingRound = String(nextRound + 1) as QualifyingRound;
+    }
+
+    initialized = true;
+  });
 </script>
 
 <div

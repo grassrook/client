@@ -709,8 +709,8 @@ func (a *App) GetAllQualifyingScores(tournamentID string) ([]qualifyingscore.Dat
 	return data, nil
 }
 
-func (a *App) UpdateQualifyingScore(tournamentID string, participantID string, round int, score float64, status string) error {
-	err := a.qualifyingScoresRepo.UpdateScore(a.ctx, tournamentID, participantID, round, score, status)
+func (a *App) UpdateQualifyingScore(params qualifyingscore.UpdateQualifyingScoreParams) error {
+	err := a.qualifyingScoresRepo.UpdateScore(a.ctx, params)
 	if err != nil {
 		a.logError("UpdateQualifyingScore", err)
 	}

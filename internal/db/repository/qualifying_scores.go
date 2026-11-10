@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
 	"time"
@@ -18,7 +19,7 @@ type QualfyingScoresRepository interface {
 		participantID string,
 	) ([]qualifyingscore.QualifyingScore, error)
 	InitializeScores(ctx context.Context, tournamentID string) error
-	UpdateScore(ctx context.Context, tournamentID, participantID string, round int, score float64, status string) error
+	UpdateScore(ctx context.Context, params qualifyingscore.UpdateQualifyingScoreParams) error
 }
 
 type SQLiteQualifyingScoresRepository struct {
@@ -29,26 +30,19 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 	ctx context.Context,
 	tournamentID string,
 ) ([]qualifyingscore.Data, error) {
-	var qualifyingRounds int
-
-	err := r.DB.QueryRowContext(ctx, `
-        SELECT qualifying_rounds
-        FROM tournaments
-        WHERE id = ?
-    `, tournamentID).Scan(&qualifyingRounds)
-	if err != nil {
-		return nil, fmt.Errorf("get qualifying rounds: %w", err)
-	}
-
 	rows, err := r.DB.QueryContext(ctx, `
-        SELECT p.id, qs.round, qs.score, qs.status
-        FROM participants p
-        LEFT JOIN qualifying_scores qs
-            ON qs.participant_id = p.id
-            AND qs.tournament_id = ?
-        WHERE p.tournament_id = ?
-        ORDER BY p.id, qs.round
-    `, tournamentID, tournamentID)
+		SELECT
+			p.id,
+			s.round,
+			s.score,
+			s.status
+		FROM participants p
+		LEFT JOIN scores s
+			ON s.participant_id = p.id
+			AND s.kind = 'qualifying'
+		WHERE p.tournament_id = ?
+		ORDER BY p.id, s.round
+	`, tournamentID)
 	if err != nil {
 		return nil, fmt.Errorf("query qualifying scores: %w", err)
 	}
@@ -61,35 +55,31 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 		var participantID string
 		var round sql.NullInt64
 		var score sql.NullFloat64
-		var status string
+		var status sql.NullString
 
 		if err := rows.Scan(&participantID, &round, &score, &status); err != nil {
-			return nil, fmt.Errorf("FindAllScores: scan qualifying score: %w", err)
+			return nil, fmt.Errorf("scan qualifying score: %w", err)
 		}
 
 		data, exists := participants[participantID]
 		if !exists {
 			data = &qualifyingscore.Data{
 				ParticipantID: participantID,
-				Scores:        make([]qualifyingscore.ScoreData, qualifyingRounds),
+				Scores:        make([]qualifyingscore.ScoreData, 0),
 			}
 			participants[participantID] = data
 			result = append(result, *data)
 		}
 
-		if round.Valid && score.Valid {
+		if round.Valid {
 			index := int(round.Int64) - 1
 
-			if index < 0 || index >= len(data.Scores) {
-				return nil, fmt.Errorf(
-					"invalid qualifying round %d for participant %s",
-					round.Int64,
-					participantID,
-				)
+			for len(data.Scores) <= index {
+				data.Scores = append(data.Scores, qualifyingscore.ScoreData{})
 			}
 
 			data.Scores[index].Score = score.Float64
-			data.Scores[index].Status = status
+			data.Scores[index].Status = status.String
 		}
 	}
 
@@ -109,22 +99,22 @@ func (r *SQLiteQualifyingScoresRepository) FindScoresByParticipantID(
 	tournamentID string,
 	participantID string,
 ) ([]qualifyingscore.QualifyingScore, error) {
-	query := `
-        SELECT
-            id,
-            round,
-            tournament_id,
-            participant_id,
-            score,
-            created_at,
-            updated_at
-        FROM qualifying_scores
-        WHERE tournament_id = ?
-          AND participant_id = ?
-        ORDER BY round ASC
-    `
-
-	rows, err := r.DB.QueryContext(ctx, query, tournamentID, participantID)
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT
+			s.id,
+			s.round,
+			p.tournament_id,
+			s.participant_id,
+			s.score,
+			s.created_at,
+			s.updated_at
+		FROM scores s
+		JOIN participants p ON p.id = s.participant_id
+		WHERE p.tournament_id = ?
+			AND s.participant_id = ?
+			AND s.kind = 'qualifying'
+		ORDER BY s.round ASC
+	`, tournamentID, participantID)
 	if err != nil {
 		return nil, fmt.Errorf("query qualifying scores by participant: %w", err)
 	}
@@ -167,28 +157,20 @@ func (r *SQLiteQualifyingScoresRepository) InitializeScores(
 	}
 	defer tx.Rollback()
 
-	var qualifyingRounds int
-	err = tx.QueryRowContext(ctx, `
-        SELECT qualifying_rounds
-        FROM tournaments
-        WHERE id = ?
-    `, tournamentID).Scan(&qualifyingRounds)
-	if err != nil {
-		return fmt.Errorf("get qualifying rounds: %w", err)
-	}
-
 	rows, err := tx.QueryContext(ctx, `
-        SELECT id
-        FROM participants
-        WHERE tournament_id = ?
-    `, tournamentID)
+		SELECT id
+		FROM participants
+		WHERE tournament_id = ?
+	`, tournamentID)
 	if err != nil {
 		return fmt.Errorf("get tournament participants: %w", err)
 	}
 
 	var participantIDs []string
+
 	for rows.Next() {
 		var participantID string
+
 		if err := rows.Scan(&participantID); err != nil {
 			rows.Close()
 			return fmt.Errorf("scan participant ID: %w", err)
@@ -201,22 +183,26 @@ func (r *SQLiteQualifyingScoresRepository) InitializeScores(
 		rows.Close()
 		return fmt.Errorf("iterate participants: %w", err)
 	}
+
 	if err := rows.Close(); err != nil {
 		return fmt.Errorf("close participant rows: %w", err)
 	}
 
 	query := `
-        INSERT INTO qualifying_scores (
-            id,
-            round,
-            tournament_id,
-            participant_id,
-            score,
-            created_at,
-            updated_at
-        )
-        VALUES (?, ?, ?, ?, 0, ?, ?)
-    `
+		INSERT INTO scores (
+			id,
+			tournament_id,
+			participant_id,
+			round,
+			kind,
+			score,
+			status,
+			results,
+			created_at,
+			updated_at
+		)
+		VALUES (?, ?,  ?, ?, 'qualifying', 0, 'pending', '{}', ?, ?)
+	`
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
@@ -227,17 +213,41 @@ func (r *SQLiteQualifyingScoresRepository) InitializeScores(
 	now := time.Now().Unix()
 
 	for _, participantID := range participantIDs {
-		for round := 1; round <= qualifyingRounds; round++ {
+		var maxRound int
+
+		err := tx.QueryRowContext(ctx, `
+			SELECT COALESCE(MAX(round), 0)
+			FROM scores
+			WHERE participant_id = ?
+				AND kind = 'qualifying'
+		`, participantID).Scan(&maxRound)
+		if err != nil {
+			return fmt.Errorf("get existing qualifying rounds: %w", err)
+		}
+
+		var qualifyingRounds int
+
+		err = tx.QueryRowContext(ctx, `
+			SELECT qualifying_rounds
+			FROM tournaments
+			WHERE id = ?
+		`, tournamentID).Scan(&qualifyingRounds)
+		if err != nil {
+			return fmt.Errorf("get qualifying rounds: %w", err)
+		}
+
+		for round := maxRound + 1; round <= qualifyingRounds; round++ {
 			id, err := gonanoid.New(15)
 			if err != nil {
-				return err
+				return fmt.Errorf("generate score ID: %w", err)
 			}
+
 			_, err = stmt.ExecContext(
 				ctx,
 				id,
-				round,
 				tournamentID,
 				participantID,
+				round,
 				now,
 				now,
 			)
@@ -259,31 +269,35 @@ func (r *SQLiteQualifyingScoresRepository) InitializeScores(
 	return nil
 }
 
-func (r *SQLiteQualifyingScoresRepository) UpdateScore(
-	ctx context.Context,
-	tournamentID string,
-	participantID string,
-	round int,
-	score float64,
-	status string,
-) error {
-	query := `
-        UPDATE qualifying_scores
-        SET score = ?, updated_at = ?, status = ?
-        WHERE tournament_id = ?
-          AND participant_id = ?
-          AND round = ?
-    `
+func (r *SQLiteQualifyingScoresRepository) UpdateScore(ctx context.Context, params qualifyingscore.UpdateQualifyingScoreParams) error {
+	results, err := json.Marshal(params.Results)
+	if err != nil {
+		return fmt.Errorf("marshal qualifying score results: %w", err)
+	}
 
-	_, err := r.DB.ExecContext(
-		ctx,
-		query,
-		score,
+	_, err = r.DB.ExecContext(ctx, `
+		UPDATE scores
+		SET
+			score = ?,
+			status = ?,
+			results = ?,
+			updated_at = ?
+		WHERE participant_id = ?
+			AND round = ?
+			AND kind = 'qualifying'
+			AND participant_id IN (
+				SELECT id
+				FROM participants
+				WHERE tournament_id = ?
+			)
+	`,
+		params.Score,
+		params.Status,
+		string(results),
 		time.Now().Unix(),
-		status,
-		tournamentID,
-		participantID,
-		round,
+		params.ParticipantID,
+		params.Round,
+		params.TournamentID,
 	)
 	if err != nil {
 		return fmt.Errorf("update qualifying score: %w", err)

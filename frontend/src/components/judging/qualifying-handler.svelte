@@ -130,9 +130,14 @@
     judgement.processing = true;
     submitting = true;
 
+    const round = !judgement.edit
+      ? Number(qualifyingRound)
+      : judgement.edit.round;
+
     try {
       await handleQualifying(
         judgement.finalizedScore().lead, // lead score only since qualifying is most likely using lead criteria
+        round,
         judgement.results,
       );
       judgement.clear();
@@ -147,43 +152,57 @@
   type QualifyingRound = "1" | "2";
   let qualifyingRound = $state<QualifyingRound>("1");
 
-  async function handleQualifying(score: number, results: Result) {
+  async function handleQualifying(
+    score: number,
+    round: number,
+    results: Result,
+  ) {
     const front = orderedEntrants[0];
     let order = tournament.qualifying_order.split(",").map((id) => id.trim());
 
-    const first = order.shift();
-    if (first) {
-      order.push(first);
+    if (!judgement.edit) {
+      // move this current participant to the back of the order
+      const first = order.shift();
+      if (first) {
+        order.push(first);
+      }
+
+      const onLastRound = round == tournament.qualifyingRounds;
+      // remove participant from qualifying order if already scored all rounds
+      if (onLastRound) {
+        order.pop();
+      }
+
+      await updateTournamentMutation.mutateAsync({
+        qualifyingOrder: order,
+      });
     }
 
-    const onLastRound = Number(qualifyingRound) == tournament.qualifyingRounds;
-    // remove participant from qualifying order if already scored all rounds
-    if (onLastRound) {
-      order.pop();
-    }
-
-    await updateTournamentMutation.mutateAsync({
-      qualifyingOrder: order,
-    });
-
-    console.log(orderedEntrants);
+    const participantId = judgement.edit
+      ? judgement.edit.participantID
+      : front.participantId;
 
     await UpdateQualifyingScore(
       new qualifyingscore.UpdateQualifyingScoreParams({
         TournamentID: tournament.id,
-        ParticipantID: front.participantId,
-        Round: Number(qualifyingRound),
+        ParticipantID: participantId,
+        Round: round,
         Score: score,
         Status: "scored",
         Results: results,
       }),
     );
 
+    const entrantId = judgement.edit ? judgement.edit.id : front.id;
     await updateEntrantMutation.mutateAsync({
-      entrantId: front.id,
+      entrantId,
       score,
       status: "scored",
     });
+
+    if (judgement.edit) {
+      judgement.onSubmitJudgementEdit();
+    }
   }
 
   const scores = createQuery(() => ({
@@ -228,7 +247,7 @@
       <strong class="text-sm tabular-nums">{currentScore.lead}</strong>
     </div>
 
-    {#if tournament.qualifyingRounds > 1}
+    {#if !judgement.edit && tournament.qualifyingRounds > 1}
       <div class="flex flex-col gap-2 space-2">
         <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="text-sm font-medium">Qualifying Round </label>

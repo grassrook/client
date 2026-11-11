@@ -116,26 +116,19 @@ func (r *SQLiteEntrantsRepository) UpdateEntrant(
 		args = append(args, *params.Status)
 	}
 
-	if params.Score != nil {
-		updates = append(
-			updates,
-			`score = CASE
-            WHEN ? >= COALESCE(
-                (
-                    SELECT MAX(qs.score)
-                    FROM scores qs
-                    WHERE qs.kind = "qualifying"
-											AND qs.tournament_id = entrants.tournament_id
-                      AND qs.participant_id = entrants.participant_id
-                ),
-                -1
-            )
-            THEN ?
-            ELSE score
-        END`,
-		)
-		args = append(args, *params.Score, *params.Score)
-	}
+	// update current entrant score with the highest value from the score rows
+	updates = append(updates, `
+    score = COALESCE(
+        (
+            SELECT MAX(qs.score)
+            FROM scores qs
+            WHERE qs.kind = 'qualifying'
+              AND qs.tournament_id = entrants.tournament_id
+              AND qs.participant_id = entrants.participant_id
+        ),
+        -1
+    )
+`)
 
 	if len(updates) == 0 {
 		return fmt.Errorf("nothing to update")

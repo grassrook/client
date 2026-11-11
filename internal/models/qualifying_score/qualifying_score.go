@@ -11,22 +11,23 @@ type QualifyingScore struct {
 	UpdatedAt     int64   `json:"updatedAt"`
 }
 
-type ScoreData struct {
-	Score  float64 `json:"score"`
-	Status string  `json:"status"`
-}
-
-type Data struct {
-	ParticipantID string      `json:"participantId"`
-	Scores        []ScoreData `json:"scores"` // each indices represent round
-}
-
 type Result struct {
 	Lead  *float64 `json:"lead,omitempty"`
 	Chase *float64 `json:"chase,omitempty"`
 }
 
 type Results map[string]Result
+
+type ScoreData struct {
+	Score   float64 `json:"score"`
+	Status  string  `json:"status"`
+	Results Results `json:"results"`
+}
+
+type Data struct {
+	ParticipantID string      `json:"participantId"`
+	Scores        []ScoreData `json:"scores"` // each indices represent round
+}
 
 type UpdateQualifyingScoreParams struct {
 	TournamentID  string

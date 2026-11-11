@@ -35,6 +35,7 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 			p.id,
 			s.round,
 			s.score,
+			s.results,
 			s.status
 		FROM participants p
 		LEFT JOIN scores s
@@ -56,8 +57,9 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 		var round sql.NullInt64
 		var score sql.NullFloat64
 		var status sql.NullString
+		var results []byte
 
-		if err := rows.Scan(&participantID, &round, &score, &status); err != nil {
+		if err := rows.Scan(&participantID, &round, &score, &results, &status); err != nil {
 			return nil, fmt.Errorf("scan qualifying score: %w", err)
 		}
 
@@ -78,8 +80,17 @@ func (r *SQLiteQualifyingScoresRepository) FindAllScores(
 				data.Scores = append(data.Scores, qualifyingscore.ScoreData{})
 			}
 
+			var parsedResults qualifyingscore.Results
+
+			if len(results) > 0 {
+				if err := json.Unmarshal(results, &parsedResults); err != nil {
+					return nil, fmt.Errorf("unmarshal qualifying results: %w", err)
+				}
+			}
+
 			data.Scores[index].Score = score.Float64
 			data.Scores[index].Status = status.String
+			data.Scores[index].Results = parsedResults
 		}
 	}
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   /* eslint-disable no-useless-assignment */
+  import { ArrowUpToLine, Pencil, RotateCcw, UserX } from "@lucide/svelte";
   import EllipsisVertical from "@lucide/svelte/icons/ellipsis-vertical";
   import {
     createMutation,
@@ -15,6 +16,7 @@
     DropdownMenuItem,
     DropdownMenuTrigger,
   } from "$src/components/ui/dropdown-menu";
+  import type { Judgement } from "$src/lib/judging.svelte";
   import {
     ConcludeQualifers,
     CreateTournamentActivityLog,
@@ -40,6 +42,7 @@
   import AlertDialogHeader from "../ui/alert-dialog/alert-dialog-header.svelte";
   import AlertDialogTitle from "../ui/alert-dialog/alert-dialog-title.svelte";
   import AlertDialogTrigger from "../ui/alert-dialog/alert-dialog-trigger.svelte";
+  import DropdownMenuSeparator from "../ui/dropdown-menu/dropdown-menu-separator.svelte";
   import Empty from "../ui/empty/empty.svelte";
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
@@ -50,10 +53,12 @@
     tournament,
     entrants,
     hidePanel = $bindable(false),
+    judgement = $bindable(),
   }: {
     tournament: tournament.Tournament;
     entrants: entrant.Entrant[];
     hidePanel?: boolean;
+    judgement: Judgement;
   } = $props();
 
   const queryClient = useQueryClient();
@@ -328,7 +333,7 @@
   );
 
   $effect(() => {
-    hidePanel = concluding;
+    hidePanel = !judgement.edit && concluding;
   });
 </script>
 
@@ -362,9 +367,11 @@
           type="button"
           class={[
             "flex w-full items-center justify-between gap-4 px-3 py-3.5 text-left transition-colors sm:px-4",
-            front === entrant.participantId
-              ? "bg-accent/50 text-accent-foreground"
-              : "hover:bg-muted/50",
+            judgement.edit?.participantID === entrant.participantId
+              ? "border border-amber-200 bg-amber-50/40 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-50"
+              : !judgement.edit && front === entrant.participantId
+                ? "bg-accent/50 text-accent-foreground"
+                : "hover:bg-muted/50",
           ]}
         >
           <div class="flex min-w-0 items-center gap-3">
@@ -430,7 +437,7 @@
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" class="w-48">
+                <DropdownMenuContent align="end" class="w-56">
                   <DropdownMenuItem
                     onclick={() => moveToFirst(idx)}
                     disabled={entrant.status === "not_qualified" ||
@@ -440,8 +447,41 @@
                         entrant.participantId,
                       )}
                   >
+                    <ArrowUpToLine class="mr-2 h-4 w-4" />
                     Move to front
                   </DropdownMenuItem>
+
+                  {#if entrant.scores?.length}
+                    <DropdownMenuSeparator />
+
+                    {#each entrant.scores as score, i (i)}
+                      <DropdownMenuItem
+                        disabled={score.status === "pending"}
+                        onclick={() => {
+                          judgement.onJudgementEdit(
+                            {
+                              id: entrant.id,
+                              participantID: entrant.participantId,
+                              round: i + 1,
+                            },
+                            score.results,
+                          );
+                        }}
+                      >
+                        <Pencil class="mr-2 h-4 w-4" />
+
+                        <span class="flex-1">
+                          Round {i + 1}
+                        </span>
+
+                        <span class="text-muted-foreground">
+                          {score.status === "pending" ? "Pending" : score.score}
+                        </span>
+                      </DropdownMenuItem>
+                    {/each}
+                  {/if}
+
+                  <DropdownMenuSeparator />
 
                   <DropdownMenuItem
                     onclick={() =>
@@ -452,7 +492,9 @@
                       )}
                     disabled={updateQualifierMutation.isPending ||
                       entrant.status === "not_qualified"}
+                    class="text-destructive focus:text-destructive"
                   >
+                    <UserX class="mr-2 h-4 w-4" />
                     Set as not qualified
                   </DropdownMenuItem>
 
@@ -462,6 +504,7 @@
                     disabled={updateQualifierMutation.isPending ||
                       entrant.status === "pending"}
                   >
+                    <RotateCcw class="mr-2 h-4 w-4" />
                     Reset
                   </DropdownMenuItem>
                 </DropdownMenuContent>

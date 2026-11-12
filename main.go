@@ -34,7 +34,7 @@ func main() {
 	app := NewApp(cfg)
 
 	err = wails.Run(&options.App{
-		Title:  "judging-internal",
+		Title:  "grassrook",
 		Width:  1368,
 		Height: 900,
 		AssetServer: &assetserver.Options{

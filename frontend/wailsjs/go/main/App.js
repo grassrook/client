@@ -142,6 +142,10 @@ export function HasChallongeAPIKey() {
   return window['go']['main']['App']['HasChallongeAPIKey']();
 }
 
+export function InitializeMatchScores(arg1) {
+  return window['go']['main']['App']['InitializeMatchScores'](arg1);
+}
+
 export function InitializeQualifyingScores(arg1) {
   return window['go']['main']['App']['InitializeQualifyingScores'](arg1);
 }
@@ -160,6 +164,10 @@ export function ReplaceParticipant(arg1, arg2, arg3) {
 
 export function ResetBattle(arg1, arg2) {
   return window['go']['main']['App']['ResetBattle'](arg1, arg2);
+}
+
+export function ResetMatchScores(arg1) {
+  return window['go']['main']['App']['ResetMatchScores'](arg1);
 }
 
 export function SetChallongeAPIKey(arg1) {
@@ -186,6 +194,14 @@ export function UpdateDriver(arg1) {
   return window['go']['main']['App']['UpdateDriver'](arg1);
 }
 
+export function UpdateEliminationScore(arg1) {
+  return window['go']['main']['App']['UpdateEliminationScore'](arg1);
+}
+
+export function UpdateEliminationScoreByRound(arg1) {
+  return window['go']['main']['App']['UpdateEliminationScoreByRound'](arg1);
+}
+
 export function UpdateEntrant(arg1) {
   return window['go']['main']['App']['UpdateEntrant'](arg1);
 }
@@ -202,8 +218,8 @@ export function UpdateParticipantCar(arg1, arg2) {
   return window['go']['main']['App']['UpdateParticipantCar'](arg1, arg2);
 }
 
-export function UpdateQualifyingScore(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['UpdateQualifyingScore'](arg1, arg2, arg3, arg4, arg5);
+export function UpdateQualifyingScore(arg1) {
+  return window['go']['main']['App']['UpdateQualifyingScore'](arg1);
 }
 
 export function UpdateTournament(arg1, arg2) {

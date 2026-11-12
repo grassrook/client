@@ -5,7 +5,7 @@
     useQueryClient,
   } from "@tanstack/svelte-query";
 
-  import type { Judgement } from "$src/lib/judging.svelte";
+  import type { Judgement, Result } from "$src/lib/judging.svelte";
   import {
     CreateTournamentActivityLog,
     GetAllQualifyingScores,
@@ -13,7 +13,11 @@
     UpdateQualifyingScore,
     UpdateTournament,
   } from "$wails/go/main/App";
-  import type { entrant, tournament } from "$wails/go/models";
+  import {
+    type entrant,
+    qualifyingscore,
+    type tournament,
+  } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
 
@@ -126,12 +130,19 @@
     judgement.processing = true;
     submitting = true;
 
+    const round = !judgement.edit
+      ? Number(qualifyingRound)
+      : judgement.edit.round;
+
     try {
-      const { lead } = judgement.finalizedScore();
-
-      await handleQualifying(lead);
-
+      await handleQualifying(
+        judgement.finalizedScore().lead, // lead score only since qualifying is most likely using lead criteria
+        round,
+        judgement.results,
+      );
       judgement.clear();
+    } catch (error) {
+      console.error("onSubmitJudgement", error);
     } finally {
       submitting = false;
       judgement.processing = false;
@@ -141,38 +152,57 @@
   type QualifyingRound = "1" | "2";
   let qualifyingRound = $state<QualifyingRound>("1");
 
-  async function handleQualifying(score: number) {
+  async function handleQualifying(
+    score: number,
+    round: number,
+    results: Result,
+  ) {
     const front = orderedEntrants[0];
     let order = tournament.qualifying_order.split(",").map((id) => id.trim());
 
-    const first = order.shift();
-    if (first) {
-      order.push(first);
+    if (!judgement.edit) {
+      // move this current participant to the back of the order
+      const first = order.shift();
+      if (first) {
+        order.push(first);
+      }
+
+      const onLastRound = round == tournament.qualifyingRounds;
+      // remove participant from qualifying order if already scored all rounds
+      if (onLastRound) {
+        order.pop();
+      }
+
+      await updateTournamentMutation.mutateAsync({
+        qualifyingOrder: order,
+      });
     }
 
-    const onLastRound = Number(qualifyingRound) == tournament.qualifyingRounds;
-    // remove participant from qualifying order if already scored all rounds
-    if (onLastRound) {
-      order.pop();
-    }
-
-    await updateTournamentMutation.mutateAsync({
-      qualifyingOrder: order,
-    });
+    const participantId = judgement.edit
+      ? judgement.edit.participantID
+      : front.participantId;
 
     await UpdateQualifyingScore(
-      tournament.id,
-      front.participantId,
-      Number(qualifyingRound),
-      score,
-      "scored",
+      new qualifyingscore.UpdateQualifyingScoreParams({
+        TournamentID: tournament.id,
+        ParticipantID: participantId,
+        Round: round,
+        Score: score,
+        Status: "scored",
+        Results: results,
+      }),
     );
 
+    const entrantId = judgement.edit ? judgement.edit.id : front.id;
     await updateEntrantMutation.mutateAsync({
-      entrantId: front.id,
+      entrantId,
       score,
       status: "scored",
     });
+
+    if (judgement.edit) {
+      judgement.onSubmitJudgementEdit();
+    }
   }
 
   const scores = createQuery(() => ({
@@ -185,6 +215,23 @@
       (data) => data.participantId === orderedEntrants[0]?.participantId,
     )?.scores ?? [],
   );
+
+  // using initialized state instead of onMount because frontScores data
+  // comes after the page is mounted
+  let initialized = $state(false);
+  $effect(() => {
+    if (initialized || frontScores.length === 0) return;
+
+    const nextRound = frontScores.findIndex(
+      (score) => score.status !== "scored",
+    );
+
+    if (nextRound !== -1) {
+      qualifyingRound = String(nextRound + 1) as QualifyingRound;
+    }
+
+    initialized = true;
+  });
 </script>
 
 <div
@@ -200,7 +247,7 @@
       <strong class="text-sm tabular-nums">{currentScore.lead}</strong>
     </div>
 
-    {#if tournament.qualifyingRounds > 1}
+    {#if !judgement.edit && tournament.qualifyingRounds > 1}
       <div class="flex flex-col gap-2 space-2">
         <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="text-sm font-medium">Qualifying Round </label>

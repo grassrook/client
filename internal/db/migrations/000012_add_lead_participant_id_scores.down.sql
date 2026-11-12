@@ -1,0 +1,1 @@
+ALTER TABLE scores DROP COLUMN lead_participant_id;

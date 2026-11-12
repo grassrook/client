@@ -1,5 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
+  import { ChevronDown, Pencil, Swords } from "@lucide/svelte";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
 
@@ -15,6 +16,7 @@
     AlertDialogTrigger,
   } from "$src/components/ui/alert-dialog";
   import { Badge } from "$src/components/ui/badge";
+  import * as DropdownMenu from "$src/components/ui/dropdown-menu";
   import {
     Tabs,
     TabsContent,
@@ -26,7 +28,9 @@
   import {
     ConcludeBattle,
     CreateTournamentActivityLog,
+    InitializeMatchScores,
     ResetBattle,
+    ResetMatchScores,
     SyncTournament,
     UpdateNote,
     UpdateTournamentState,
@@ -45,7 +49,7 @@
   let {
     tournamentID,
     matches,
-    judgement,
+    judgement = $bindable(),
     stage,
     activeBattles,
     progress,
@@ -61,63 +65,6 @@
   } = $props();
 
   const queryClient = useQueryClient();
-
-  let selectedMatchId = $state<string | undefined>(undefined);
-
-  function getLead(
-    p1Battle: Battles[number],
-    p2Battle: Battles[number],
-  ): "p1" | "p2" {
-    if (p1Battle.leadStatus === -1) return "p2";
-    if (p2Battle.leadStatus === -1) return "p1";
-
-    return p1Battle.leadStatus === 1 ? "p1" : "p2";
-  }
-
-  function onStartMatch(match: repository.Match[]) {
-    stage.clear();
-    judgement.clear();
-
-    selectedMatchId = match[0].matchId;
-    stage.matchId = selectedMatchId;
-
-    const p1 = match[0];
-    const p2 = match[1];
-
-    if (!p1.participantId || !p2.participantId) {
-      console.warn("missing participant id");
-      return;
-    }
-    const battles = activeBattles.filter(
-      (battle) => battle.matchId === p1.matchId,
-    );
-
-    if (battles.length !== 2) {
-      console.warn("active battle not found or incomplete");
-      return;
-    }
-
-    const p1Battle = battles.find(
-      (battle) => battle.participantId === p1.participantId,
-    );
-    const p2Battle = battles.find(
-      (battle) => battle.participantId === p2.participantId,
-    );
-
-    if (!p1Battle || !p2Battle) {
-      console.warn("missing active battle participant");
-      return;
-    }
-
-    const lead = getLead(p1Battle, p2Battle);
-
-    if (!lead) {
-      console.warn("no lead participant");
-      return;
-    }
-
-    stage.setDrivers(p1.participantId, p2.participantId, lead);
-  }
 
   const sortedMatches = $derived(
     [...matches]
@@ -159,7 +106,8 @@
     matchNumber: number,
   ) {
     await updateNoteMutation.mutateAsync("");
-    await ResetBattle(tournamentID, selectedMatchId!);
+    await ResetBattle(tournamentID, stage.matchId!);
+    await ResetMatchScores(stage.matchId!);
 
     await CreateTournamentActivityLog({
       tournament_id: tournamentID,
@@ -182,11 +130,11 @@
       queryKey: ["logs", tournamentID],
     });
 
-    onStartMatch(match);
+    onLoadMatch(match);
   }
 
   async function onHandleConclude() {
-    await ConcludeBattle(tournamentID, selectedMatchId!);
+    await ConcludeBattle(tournamentID, stage.matchId!);
     await SyncTournament(tournamentID);
 
     await queryClient.invalidateQueries({
@@ -206,7 +154,6 @@
     });
 
     stage.clear();
-    selectedMatchId = undefined;
   }
 
   let isProcessing = $state(false);
@@ -225,6 +172,7 @@
       omtDialogOpen = false;
     } finally {
       isProcessing = false;
+      clearMatchSelection();
     }
   }
 
@@ -236,6 +184,7 @@
       concludeDialogOpen = false;
     } finally {
       isProcessing = false;
+      clearMatchSelection();
     }
   }
 
@@ -284,7 +233,81 @@
   function clearMatchSelection() {
     stage.clear();
     judgement.clear();
-    selectedMatchId = undefined;
+    judgement.onSubmitJudgementEdit();
+  }
+
+  // scores initilalizations
+  async function onLoadMatch(match: repository.Match[]) {
+    const currentMatch = match[0];
+    stage.matchId = currentMatch.matchId;
+    stage.bothRunFinished = currentMatch.bothRunFinished;
+    try {
+      const scores = await InitializeMatchScores({
+        matchId: match[0].matchId,
+        participants: match.map((m) => m.participantId!),
+        tournamentID,
+      });
+
+      const leading = activeBattles.find(
+        (battle) =>
+          battle.matchId === currentMatch.matchId && battle.leadStatus === 1,
+      );
+
+      const chasing = activeBattles.find(
+        (battle) =>
+          battle.matchId === currentMatch.matchId && battle.leadStatus !== 1,
+      );
+
+      if (!leading || !chasing) {
+        console.warn("onloadmatch need both leading and chasing");
+        return;
+      }
+
+      const currentRound = scores.find(
+        (score) => score.leadParticipantID === leading.participantId,
+      );
+      if (!currentRound) {
+        console.error("no current round. not supposed to happen");
+        return;
+      }
+
+      judgement.results = currentRound.results;
+      stage.setDrivers(leading.participantId, chasing.participantId, "p1");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function onEditMatchRound(match: repository.Match[], round: number) {
+    const currentMatchID = match[0].matchId;
+    stage.matchId = currentMatchID;
+
+    const scores = await InitializeMatchScores({
+      matchId: match[0].matchId,
+      participants: match.map((m) => m.participantId!),
+      tournamentID,
+    });
+
+    const currentRound = scores.find((score) => score.round === round);
+    if (!currentRound) {
+      console.error("no current round. not supposed to happen");
+      return;
+    }
+    const otherRound = scores.find(
+      (score) => score.round !== currentRound.round,
+    );
+
+    if (!otherRound) {
+      console.error("other participant score not found");
+      return;
+    }
+
+    stage.setDrivers(
+      currentRound.leadParticipantID,
+      otherRound.leadParticipantID,
+      "p1",
+    );
+    judgement.onJudgementEdit({ round }, currentRound.results);
   }
 </script>
 
@@ -356,12 +379,46 @@
             match[0].participantId && match[1].participantId}
           {@const roundKey = roundKeys()[i]}
           {@const matchNumber = round.indexOf(matchData) + 1}
+          {@const isSelected = stage.matchId === currentMatch.matchId}
+          {@const canLoad =
+            currentMatch.status === "open" && !!hasBothParticipants}
+          {@const showActions = !!currentMatch.bothRunFinished && isSelected}
+          {@const score1 = Number(match[0].finalScore ?? 0)}
+          {@const score2 = Number(match[1].finalScore ?? 0)}
+          {@const totalScore = score1 + score2}
+          {@const isOngoing = currentMatch.status !== "complete"}
+          {@const isTied =
+            !!currentMatch.bothRunFinished && isOngoing && score1 === score2}
+          {@const winner1 = !!(
+            match[0].participant_name &&
+            match[0].winnerId &&
+            match[0].winnerId === match[0].challongeParticipantId
+          )}
+          {@const winner2 = !!(
+            match[1].participant_name &&
+            match[1].winnerId &&
+            match[1].winnerId === match[1].challongeParticipantId
+          )}
+          {@const bar1 =
+            totalScore === 0
+              ? "bg-muted"
+              : winner1
+                ? "bg-green-500"
+                : score1 >= score2
+                  ? "bg-foreground/80"
+                  : "bg-muted-foreground/40"}
+          {@const bar2 =
+            totalScore === 0
+              ? "bg-muted"
+              : winner2
+                ? "bg-green-500"
+                : score2 >= score1
+                  ? "bg-foreground/80"
+                  : "bg-muted-foreground/40"}
 
           <div
-            class={`border border-border/80 rounded-lg transition-colors hover:border-primary/60 hover:bg-muted/50 ${
-              selectedMatchId === currentMatch.matchId
-                ? "border-primary/60 bg-muted/50"
-                : ""
+            class={`rounded-lg border border-border/80 transition-colors ${
+              isSelected ? "bg-muted/40" : ""
             }`}
           >
             <div class="border-b px-4 py-3">
@@ -371,6 +428,12 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                  {#if isSelected}
+                    <Badge variant="secondary" class="gap-1.5">
+                      <span class="size-1.5 rounded-full bg-foreground"></span>
+                      Loaded
+                    </Badge>
+                  {/if}
                   {#if currentMatch.status !== "open"}
                     <Badge variant="secondary">
                       {capitalize(currentMatch.status)}
@@ -381,148 +444,359 @@
             </div>
 
             <div class="px-0">
-              <button
-                type="button"
-                class="block w-full cursor-pointer text-left"
-                disabled={currentMatch.status !== "open" ||
-                  !hasBothParticipants}
-                onclick={() => {
-                  if (currentMatch.status === "open" && hasBothParticipants) {
-                    if (selectedMatchId !== currentMatch.matchId) {
-                      onStartMatch(match);
-                    } else {
-                      clearMatchSelection();
-                    }
-                  }
-                }}
-              >
-                <div class="mx-4 flex items-center gap-3 pt-3 pb-3">
-                  {#each match as entrant, idx}
-                    {#if idx === 1}
-                      <span
-                        class="shrink-0 text-xs uppercase text-muted-foreground"
-                      >
-                        VS
-                      </span>
-                    {/if}
+              <!-- Entrants are display only now. Loading a match is done with the explicit button in the footer. -->
+              <div>
+                <div class="px-4 pt-4 pb-4">
+                  <div class="relative grid grid-cols-2 gap-2.5">
+                    {#each match as entrant, idx}
+                      {@const isRight = idx === 1}
+                      {@const myScore = idx === 0 ? score1 : score2}
+                      {@const otherScore = idx === 0 ? score2 : score1}
+                      {@const hasResult = !!(
+                        entrant.participant_name && entrant.winnerId
+                      )}
+                      {@const isWinner =
+                        hasResult &&
+                        entrant.winnerId === entrant.challongeParticipantId}
+                      {@const isLead =
+                        hasBothParticipants &&
+                        matchData.leadingParticipantId ===
+                          entrant.participantId &&
+                        currentMatch.status !== "complete"}
+                      {@const isChase =
+                        hasBothParticipants &&
+                        matchData.leadingParticipantId !== null &&
+                        matchData.leadingParticipantId !==
+                          entrant.participantId &&
+                        currentMatch.status !== "complete"}
+                      {@const isLeading =
+                        hasBothParticipants &&
+                        isOngoing &&
+                        myScore > otherScore}
 
-                    <div
-                      class={`flex min-w-0 flex-1 justify-between items-center gap-2 ${
-                        idx === 1 ? "flex-row-reverse" : ""
-                      }`}
-                    >
                       <div
-                        class={`flex items-center ${
-                          idx === 1 ? "flex-row-reverse" : ""
+                        class={`flex min-w-0 flex-col gap-2.5 rounded-xl border p-3.5 ${
+                          isRight
+                            ? "items-end pl-7 text-right"
+                            : "items-start pr-7"
+                        } ${
+                          isWinner
+                            ? "border-green-500/60 bg-green-500/5"
+                            : isLeading
+                              ? "border-foreground/25 bg-muted/60"
+                              : "border-border/60 bg-muted/20"
                         }`}
                       >
-                        <span class="min-w-0 truncate font-medium">
-                          {entrant.participant_name ?? "TBD"}
+                        <div
+                          class={`flex w-full min-w-0 items-center gap-2 ${
+                            isRight ? "flex-row-reverse" : ""
+                          }`}
+                        >
+                          <span
+                            class={`min-w-0 truncate font-medium ${
+                              hasResult && !isWinner
+                                ? "text-muted-foreground"
+                                : ""
+                            }`}
+                          >
+                            {entrant.participant_name ?? "TBD"}
+                          </span>
+
+                          {#if isLead}
+                            <Badge
+                              variant="outline"
+                              class="border-sky-300/60 text-[11px] font-bold tracking-wider text-sky-300 uppercase"
+                              >Lead</Badge
+                            >
+                          {:else if isChase}
+                            <Badge
+                              variant="outline"
+                              class="border-violet-300/60 text-[11px] font-bold tracking-wider text-violet-300 uppercase"
+                              >Chase</Badge
+                            >
+                          {/if}
+                        </div>
+
+                        <span
+                          class={`text-5xl leading-none font-semibold tracking-tight tabular-nums ${
+                            entrant.participant_name && entrant.winnerId
+                              ? entrant.winnerId ===
+                                entrant.challongeParticipantId
+                                ? "text-green-500"
+                                : "text-muted-foreground/30"
+                              : ""
+                          }`}
+                        >
+                          {entrant.finalScore}
                         </span>
 
-                        {#if hasBothParticipants && matchData.leadingParticipantId === entrant.participantId && currentMatch.status !== "complete"}
-                          <Badge variant="outline">Lead</Badge>
-                        {/if}
-                      </div>
+                        <div
+                          class={`flex min-h-5 w-full ${
+                            isRight ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          {#if isWinner}
+                            <Badge
+                              variant="outline"
+                              class="border-green-500/40 bg-green-500/10 text-green-500"
+                              >Winner</Badge
+                            >
+                          {:else if isTied && hasBothParticipants}
+                            <Badge
+                              variant="outline"
+                              class="border-amber-400/50 bg-amber-400/10 text-amber-400"
+                              >Tied</Badge
+                            >
+                          {:else if isLeading}
+                            <Badge variant="secondary"
+                              >+{myScore - otherScore} ahead</Badge
+                            >
+                          {/if}
+                        </div>
 
-                      <span
-                        class={`shrink-0 text-lg font-semibold tabular-nums ${
-                          entrant.participant_name && entrant.winnerId
-                            ? entrant.winnerId ===
-                              entrant.challongeParticipantId
-                              ? "text-green-500"
-                              : "text-muted-foreground/30"
-                            : ""
-                        }`}
-                      >
-                        {entrant.score}
+                        <!-- PLACEHOLDER: per-run breakdown. Run scores and roles are not wired yet. -->
+                        <div class="flex w-full flex-col gap-0.5 border-t pt-2">
+                          {#each [1, 2] as runNumber}
+                            <div
+                              class={`flex items-center justify-between gap-2 rounded-md px-1.5 py-1 text-xs ${
+                                isRight ? "flex-row-reverse" : ""
+                              }`}
+                            >
+                              <span class="text-muted-foreground">
+                                Run {runNumber}
+                                <span class="font-semibold"></span>
+                              </span>
+                              <span
+                                class="font-semibold text-muted-foreground tabular-nums"
+                                >{entrant.scores[runNumber - 1]}</span
+                              >
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/each}
+
+                    <div
+                      class="pointer-events-none absolute top-1/2 left-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-xs font-bold tracking-widest ring-4 ring-background {isTied
+                        ? 'border-amber-400 text-amber-400'
+                        : 'text-muted-foreground'}"
+                    >
+                      {isTied ? "TIE" : "VS"}
+                    </div>
+                  </div>
+
+                  <div class="mt-4 flex flex-col gap-2">
+                    <div class="relative flex h-1.5 gap-0.5">
+                      <div
+                        class={`min-w-0 rounded-l-full ${bar1}`}
+                        style={`flex: ${totalScore > 0 ? score1 : 1} 1 0%`}
+                      ></div>
+                      <div
+                        class={`min-w-0 rounded-r-full ${bar2}`}
+                        style={`flex: ${totalScore > 0 ? score2 : 1} 1 0%`}
+                      ></div>
+                      <div
+                        class="absolute -top-1 left-1/2 h-3.5 w-0.5 -translate-x-1/2 rounded bg-muted-foreground/50"
+                      ></div>
+                    </div>
+                    <div
+                      class="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums"
+                    >
+                      <span>
+                        {totalScore > 0
+                          ? `${Math.round((score1 / totalScore) * 100)}%`
+                          : "—"}
+                      </span>
+                      <span>
+                        {totalScore > 0
+                          ? `${Math.round((score2 / totalScore) * 100)}%`
+                          : "—"}
                       </span>
                     </div>
-                  {/each}
+                  </div>
                 </div>
-              </button>
+              </div>
 
-              {#if currentMatch.bothRunFinished && selectedMatchId === currentMatch.matchId}
-                <ButtonGroup.Root
-                  orientation="horizontal"
-                  class="flex justify-end w-full pr-2 py-2"
-                  onclick={(event) => event.stopPropagation()}
+              {#if canLoad || showActions}
+                <div
+                  class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3"
                 >
-                  <AlertDialog bind:open={omtDialogOpen}>
-                    <AlertDialogTrigger>
-                      <Button
-                        variant="outline"
-                        class="rounded-r-none"
-                        disabled={isProcessing}>OMT</Button
-                      >
-                    </AlertDialogTrigger>
+                  <!-- PLACEHOLDER: helper copy is static text for now. -->
+                  <p
+                    class={`min-w-0 flex-1 basis-56 text-xs ${
+                      showActions && isTied
+                        ? "text-amber-400"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {showActions
+                      ? isTied
+                        ? "Scores are level. Call OMT to run it again."
+                        : "Both runs judged. Conclude to finalize the result."
+                      : isSelected
+                        ? "Loaded for judging."
+                        : "Load this match to start judging."}
+                  </p>
 
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Start OMT?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will reset the battle and start an OMT. Are you
-                          sure you want to continue?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
+                  <div class="flex flex-wrap items-center justify-end gap-2">
+                    {#if canLoad}
+                      {@const toggleLoad = () => {
+                        if (
+                          currentMatch.status === "open" &&
+                          hasBothParticipants
+                        ) {
+                          if (stage.matchId !== currentMatch.matchId) {
+                            onLoadMatch(match);
+                          } else {
+                            clearMatchSelection();
+                          }
+                        }
+                      }}
 
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isProcessing}>
-                          Cancel
-                        </AlertDialogCancel>
-
-                        <AlertDialogAction
-                          disabled={isProcessing}
-                          onclick={() =>
-                            handleOMT(match, roundKey, matchNumber)}
+                      {#if isSelected}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          aria-pressed={true}
+                          class="focus-visible:border-border focus-visible:ring-2 focus-visible:ring-muted-foreground/30"
+                          onclick={toggleLoad}
                         >
-                          {#if isProcessing}
-                            Processing...
-                          {:else}
-                            Continue
-                          {/if}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          Unload
+                        </Button>
+                      {:else}
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                type="button"
+                                variant="secondary"
+                                class="gap-1.5 focus-visible:border-border focus-visible:ring-2 focus-visible:ring-muted-foreground/30"
+                                aria-label={`Enter match ${matchNumber}`}
+                              >
+                                Load
+                                <ChevronDown class="h-4 w-4 opacity-70" />
+                              </Button>
+                            {/snippet}
+                          </DropdownMenu.Trigger>
 
-                  <AlertDialog bind:open={concludeDialogOpen}>
-                    <AlertDialogTrigger>
-                      <Button
-                        variant="outline"
-                        class="-ml-px rounded-l-none"
-                        disabled={isProcessing}>Conclude</Button
+                          <DropdownMenu.Content align="end" class="w-56">
+                            <DropdownMenu.Item onSelect={toggleLoad}>
+                              <Swords class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Load main battle </span>
+                            </DropdownMenu.Item>
+
+                            <DropdownMenu.Separator />
+
+                            <DropdownMenu.Item
+                              onSelect={() => onEditMatchRound(match, 1)}
+                            >
+                              <Pencil class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Edit round 1 </span>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onSelect={() => onEditMatchRound(match, 2)}
+                            >
+                              <Pencil class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Edit round 2 </span>
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                      {/if}
+                    {/if}
+
+                    {#if showActions && !judgement.edit}
+                      <ButtonGroup.Root
+                        orientation="horizontal"
+                        class="flex justify-end"
+                        onclick={(event) => event.stopPropagation()}
                       >
-                    </AlertDialogTrigger>
+                        <AlertDialog bind:open={omtDialogOpen}>
+                          <AlertDialogTrigger>
+                            <Button
+                              variant="outline"
+                              class={`rounded-r-none ${
+                                isTied ? "border-amber-400 text-amber-400" : ""
+                              }`}
+                              disabled={isProcessing}>OMT</Button
+                            >
+                          </AlertDialogTrigger>
 
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Conclude match?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will finalize the result of this match. Are you
-                          sure?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Start OMT?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will reset the battle and start an OMT. Are
+                                you sure you want to continue?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
 
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isProcessing}>
-                          Cancel
-                        </AlertDialogCancel>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isProcessing}>
+                                Cancel
+                              </AlertDialogCancel>
 
-                        <AlertDialogAction
-                          disabled={isProcessing}
-                          onclick={() => handleConclude()}
-                        >
-                          {#if isProcessing}
-                            Processing...
-                          {:else}
-                            Conclude
-                          {/if}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </ButtonGroup.Root>
+                              <AlertDialogAction
+                                disabled={isProcessing}
+                                onclick={() =>
+                                  handleOMT(match, roundKey, matchNumber)}
+                              >
+                                {#if isProcessing}
+                                  Processing...
+                                {:else}
+                                  Continue
+                                {/if}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog bind:open={concludeDialogOpen}>
+                          <AlertDialogTrigger>
+                            <Button
+                              variant="outline"
+                              class="-ml-px rounded-l-none"
+                              disabled={isProcessing}>Conclude</Button
+                            >
+                          </AlertDialogTrigger>
+
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle
+                                >Conclude match?</AlertDialogTitle
+                              >
+                              <AlertDialogDescription>
+                                This will finalize the result of this match. Are
+                                you sure?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isProcessing}>
+                                Cancel
+                              </AlertDialogCancel>
+
+                              <AlertDialogAction
+                                disabled={isProcessing}
+                                onclick={() => handleConclude()}
+                              >
+                                {#if isProcessing}
+                                  Processing...
+                                {:else}
+                                  Conclude
+                                {/if}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </ButtonGroup.Root>
+                    {/if}
+                  </div>
+                </div>
+              {:else if !hasBothParticipants}
+                <div class="border-t px-4 py-3 text-xs text-muted-foreground">
+                  Waiting for participants
+                </div>
               {/if}
             </div>
           </div>

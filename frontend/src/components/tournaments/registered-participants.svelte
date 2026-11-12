@@ -71,7 +71,9 @@
   );
 
   const canReplace = $derived(
-    tournament.status === "elimination" && items.length > 1,
+    tournament.status === "elimination" &&
+      items.length > 1 &&
+      items.length > tournament.size,
   );
 
   // ---------- reorder ----------

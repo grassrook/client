@@ -77,6 +77,25 @@ func (r *SQLiteParticipantsRepository) ReplaceParticipant(ctx context.Context, f
 		return result, fmt.Errorf("update nodes.participant_id: %w", err)
 	}
 
+	// TODO: should forbid replacing participant if the participant already scored a round
+	// update the scores table if it already exists
+	if _, err := tx.ExecContext(ctx, `
+    UPDATE scores
+    SET participant_id = ?
+    WHERE participant_id = ?
+        AND kind = 'elimination'
+`, to, from); err != nil {
+		return result, fmt.Errorf("update scores.participant_id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+    UPDATE scores
+    SET lead_participant_id = ?
+    WHERE lead_participant_id = ?
+        AND kind = 'elimination'
+`, to, from); err != nil {
+		return result, fmt.Errorf("update scores.lead_participant_id: %w", err)
+	}
+
 	// state of `from` before the Challonge ID is moved
 	before, err := getParticipant(ctx, tx, from)
 	if err != nil {

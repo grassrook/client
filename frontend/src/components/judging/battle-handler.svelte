@@ -11,9 +11,12 @@
   import {
     ChangeLeader,
     GetNote,
+    UpdateEliminationScore,
+    UpdateEliminationScoreByRound,
     UpdateMatchSingleParticipant,
     UpdateNote,
   } from "$wails/go/main/App";
+  import { eliminationscore, type repository } from "$wails/go/models";
 
   import Button from "../ui/button/button.svelte";
   import Label from "../ui/label/label.svelte";
@@ -23,10 +26,12 @@
     tournamentID,
     judgement,
     stage,
+    activeBattles,
   }: {
     tournamentID: string;
     judgement: Judgement;
     stage: Stage;
+    activeBattles: repository.ActiveBattle[];
   } = $props();
 
   const queryClient = useQueryClient();
@@ -44,39 +49,121 @@
       stage.setScore(scores);
       const [p1, p2] = stage.getScores();
 
-      await Promise.all([
-        UpdateMatchSingleParticipant({
-          TournamentID: tournamentID,
-          MatchID: stage.matchId!,
-          ParticipantID: p1.participantId,
-          AppendScore: true,
-          Score: p1.score,
-        }),
-        UpdateMatchSingleParticipant({
-          TournamentID: tournamentID,
-          MatchID: stage.matchId!,
-          ParticipantID: p2.participantId,
-          AppendScore: true,
-          Score: p2.score,
-        }),
-      ]);
+      if (!judgement.edit) {
+        const paramp1 = new eliminationscore.UpdateEliminationScoreParams({
+          participantID: p1.participantId,
+          score: p1.score,
+          leadParticipantID: stage.getLeader(),
+          matchId: stage.matchId!,
+          results: judgement.results,
+        });
+        const paramp2 = new eliminationscore.UpdateEliminationScoreParams({
+          participantID: p2.participantId,
+          score: p2.score,
+          leadParticipantID: stage.getLeader(),
+          matchId: stage.matchId!,
+          results: judgement.results,
+        });
 
-      await ChangeLeader(tournamentID, stage.matchId!);
+        await Promise.all([
+          UpdateMatchSingleParticipant({
+            TournamentID: tournamentID,
+            MatchID: stage.matchId!,
+            ParticipantID: p1.participantId,
+            AppendScore: true,
+            Score: p1.score,
+          }),
+          UpdateMatchSingleParticipant({
+            TournamentID: tournamentID,
+            MatchID: stage.matchId!,
+            ParticipantID: p2.participantId,
+            AppendScore: true,
+            Score: p2.score,
+          }),
+          UpdateEliminationScore(paramp1),
+          UpdateEliminationScore(paramp2),
+        ]);
 
-      await queryClient.invalidateQueries({
-        queryKey: ["activeBattles", tournamentID],
-      });
+        await ChangeLeader(tournamentID, stage.matchId!);
 
-      await queryClient.invalidateQueries({
-        queryKey: ["logs", tournamentID],
-      });
+        await queryClient.invalidateQueries({
+          queryKey: ["activeBattles", tournamentID],
+        });
 
-      await queryClient.invalidateQueries({
-        queryKey: ["matches", tournamentID],
-      });
+        await queryClient.invalidateQueries({
+          queryKey: ["logs", tournamentID],
+        });
 
-      stage.switchLeader();
-      judgement.clear();
+        await queryClient.invalidateQueries({
+          queryKey: ["matches", tournamentID],
+        });
+
+        const isFinished = activeBattles
+          .filter((battle) => battle.matchId === stage.matchId)
+          .every((battle) => battle.leadStatus === -1);
+
+        // if round 2, set both run finished to close the panel
+        if (isFinished) {
+          stage.bothRunFinished = true;
+        } else {
+          stage.switchLeader();
+          judgement.clear();
+        }
+      } else {
+        const paramp1 =
+          new eliminationscore.UpdateEliminationScoreByRoundParams({
+            participantID: p1.participantId,
+            score: p1.score,
+            round: judgement.edit.round,
+            matchId: stage.matchId!,
+            results: judgement.results,
+          });
+
+        const paramp2 =
+          new eliminationscore.UpdateEliminationScoreByRoundParams({
+            participantID: p2.participantId,
+            score: p2.score,
+            round: judgement.edit.round,
+            matchId: stage.matchId!,
+            results: judgement.results,
+          });
+        const [scorep1, scorep2] = await Promise.all([
+          await UpdateEliminationScoreByRound(paramp1),
+          await UpdateEliminationScoreByRound(paramp2),
+        ]);
+
+        await Promise.all([
+          UpdateMatchSingleParticipant({
+            TournamentID: tournamentID,
+            MatchID: stage.matchId!,
+            ParticipantID: p1.participantId,
+            AppendScore: false,
+            Score: scorep1,
+          }),
+          UpdateMatchSingleParticipant({
+            TournamentID: tournamentID,
+            MatchID: stage.matchId!,
+            ParticipantID: p2.participantId,
+            AppendScore: false,
+            Score: scorep2,
+          }),
+        ]);
+
+        await queryClient.invalidateQueries({
+          queryKey: ["activeBattles", tournamentID],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ["logs", tournamentID],
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: ["matches", tournamentID],
+        });
+
+        stage.clear();
+        judgement.onSubmitJudgementEdit();
+      }
     } finally {
       submitting = false;
       judgement.processing = false;

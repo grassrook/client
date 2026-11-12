@@ -1,5 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
+  import { Pencil } from "@lucide/svelte";
   import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
@@ -43,7 +44,6 @@
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
-  import { Pencil } from "@lucide/svelte";
 
   type Battles = repository.ActiveBattle[];
 
@@ -245,7 +245,6 @@
   // scores initilalizations
   async function onLoadMatch(match: repository.Match[]) {
     const currentMatchID = match[0].matchId;
-    stage.matchId = currentMatchID;
     selectedMatchId = currentMatchID;
     try {
       const scores = await InitializeMatchScores({
@@ -254,12 +253,23 @@
         tournamentID,
       });
 
-      const leading = activeBattles.find((battle) => battle.leadStatus == 1);
-      const chasing = activeBattles.find((battle) => battle.leadStatus != 1);
+      const leading = activeBattles.find(
+        (battle) =>
+          battle.matchId === currentMatchID && battle.leadStatus === 1,
+      );
+
+      const chasing = activeBattles.find(
+        (battle) =>
+          battle.matchId === currentMatchID && battle.leadStatus !== 1,
+      );
+
       if (!leading || !chasing) {
-        console.error("need both leading and chasing");
+        console.warn("onloadmatch need both leading and chasing");
         return;
       }
+
+      // set stage match id to show the judging panel
+      stage.matchId = currentMatchID;
 
       const currentRound = scores.find(
         (score) => score.leadParticipantID === leading.participantId,
@@ -382,8 +392,8 @@
           {@const canLoad =
             currentMatch.status === "open" && !!hasBothParticipants}
           {@const showActions = !!currentMatch.bothRunFinished && isSelected}
-          {@const score1 = Number(match[0].score ?? 0)}
-          {@const score2 = Number(match[1].score ?? 0)}
+          {@const score1 = Number(match[0].finalScore ?? 0)}
+          {@const score2 = Number(match[1].finalScore ?? 0)}
           {@const totalScore = score1 + score2}
           {@const isOngoing = currentMatch.status !== "complete"}
           {@const isTied =
@@ -563,7 +573,7 @@
                               : ""
                           }`}
                         >
-                          {entrant.score}
+                          {entrant.finalScore}
                         </span>
 
                         <div
@@ -600,11 +610,11 @@
                             >
                               <span class="text-muted-foreground">
                                 Run {runNumber}
-                                <span class="font-semibold">—</span>
+                                <span class="font-semibold"></span>
                               </span>
                               <span
                                 class="font-semibold text-muted-foreground tabular-nums"
-                                >—</span
+                                >{entrant.scores[runNumber - 1]}</span
                               >
                             </div>
                           {/each}

@@ -682,7 +682,8 @@ export namespace repository {
 	    winnerId?: string;
 	    challongeParticipantId?: string;
 	    participantId?: string;
-	    score?: number;
+	    finalScore?: number;
+	    scores: number[];
 	    bothRunFinished: boolean;
 	    note: string;
 	
@@ -699,7 +700,8 @@ export namespace repository {
 	        this.winnerId = source["winnerId"];
 	        this.challongeParticipantId = source["challongeParticipantId"];
 	        this.participantId = source["participantId"];
-	        this.score = source["score"];
+	        this.finalScore = source["finalScore"];
+	        this.scores = source["scores"];
 	        this.bothRunFinished = source["bothRunFinished"];
 	        this.note = source["note"];
 	    }

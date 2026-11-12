@@ -29,16 +29,17 @@ type Node struct {
 }
 
 type Match struct {
-	MatchID                string   `json:"matchId"`
-	ParticipantName        *string  `json:"participant_name"`
-	Status                 string   `json:"status"`
-	Round                  int      `json:"round"`
-	WinnerID               *string  `json:"winnerId"`
-	ChallongeParticipantID *string  `json:"challongeParticipantId"`
-	ParticipantID          *string  `json:"participantId"`
-	Score                  *float64 `json:"score"`
-	BothRunFinished        bool     `json:"bothRunFinished"`
-	Note                   string   `json:"note"`
+	MatchID                string     `json:"matchId"`
+	ParticipantName        *string    `json:"participant_name"`
+	Status                 string     `json:"status"`
+	Round                  int        `json:"round"`
+	WinnerID               *string    `json:"winnerId"`
+	ChallongeParticipantID *string    `json:"challongeParticipantId"`
+	ParticipantID          *string    `json:"participantId"`
+	FinalScore             *float64   `json:"finalScore"`
+	Scores                 [2]float64 `json:"scores"` // represents inidividual's each round score
+	BothRunFinished        bool       `json:"bothRunFinished"`
+	Note                   string     `json:"note"`
 }
 
 type RoundGroup struct {
@@ -159,7 +160,7 @@ func (r *SQLiteMatchesRepository) GetMatch(
 		match.ParticipantID = &participantID.String
 	}
 	if score.Valid {
-		match.Score = &score.Float64
+		match.FinalScore = &score.Float64
 	}
 
 	match.BothRunFinished = bothRunFinished != 0
@@ -197,10 +198,26 @@ func (r *SQLiteMatchesRepository) GetMatches(
 				),
 				1
 			) AS both_run_finished,
-			 n.note
+			 n.note,
+		COALESCE(s.round1_score, 0),
+		COALESCE(s.round2_score, 0)
 		FROM nodes n
 		INNER JOIN brackets b ON n.bracket_id = b.id
 		LEFT JOIN participants p ON p.id = n.participant_id
+		LEFT JOIN (
+				SELECT
+						tournament_id,
+						match_id,
+						participant_id,
+						MAX(CASE WHEN round = 1 THEN score END) AS round1_score,
+						MAX(CASE WHEN round = 2 THEN score END) AS round2_score
+				FROM scores
+				WHERE kind = 'elimination'
+						AND round IN (1, 2)
+				GROUP BY tournament_id, match_id, participant_id
+		) s ON s.tournament_id = b.tournament_id
+				AND s.match_id = n.match_id
+				AND s.participant_id = n.participant_id
 		WHERE b.tournament_id = ?
 	`
 
@@ -220,7 +237,7 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			winnerID        sql.NullString
 			challongeID     sql.NullString
 			participantID   sql.NullString
-			score           sql.NullFloat64
+			finalScore      sql.NullFloat64
 			bothRunFinished int
 			note            string
 		)
@@ -233,9 +250,11 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			&winnerID,
 			&challongeID,
 			&participantID,
-			&score,
+			&finalScore,
 			&bothRunFinished,
 			&note,
+			&match.Scores[0],
+			&match.Scores[1],
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan bracket match: %w", err)
@@ -253,8 +272,8 @@ func (r *SQLiteMatchesRepository) GetMatches(
 		if participantID.Valid {
 			match.ParticipantID = &participantID.String
 		}
-		if score.Valid {
-			match.Score = &score.Float64
+		if finalScore.Valid {
+			match.FinalScore = &finalScore.Float64
 		}
 		match.BothRunFinished = bothRunFinished != 0
 

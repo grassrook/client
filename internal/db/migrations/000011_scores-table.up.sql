@@ -17,7 +17,6 @@ CREATE TABLE scores(
 INSERT INTO scores (
     id,
     participant_id,
-    lead_participant_id,
     match_id,
     round,
     score,

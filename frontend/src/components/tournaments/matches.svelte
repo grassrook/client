@@ -1,5 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
+  import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
 
@@ -15,6 +16,7 @@
     AlertDialogTrigger,
   } from "$src/components/ui/alert-dialog";
   import { Badge } from "$src/components/ui/badge";
+  import * as DropdownMenu from "$src/components/ui/dropdown-menu";
   import {
     Tabs,
     TabsContent,
@@ -26,7 +28,9 @@
   import {
     ConcludeBattle,
     CreateTournamentActivityLog,
+    InitializeMatchScores,
     ResetBattle,
+    ResetMatchScores,
     SyncTournament,
     UpdateNote,
     UpdateTournamentState,
@@ -39,13 +43,14 @@
   import EmptyDescription from "../ui/empty/empty-description.svelte";
   import EmptyHeader from "../ui/empty/empty-header.svelte";
   import EmptyTitle from "../ui/empty/empty-title.svelte";
+  import { Pencil } from "@lucide/svelte";
 
   type Battles = repository.ActiveBattle[];
 
   let {
     tournamentID,
     matches,
-    judgement,
+    judgement = $bindable(),
     stage,
     activeBattles,
     progress,
@@ -62,62 +67,8 @@
 
   const queryClient = useQueryClient();
 
+  // TODO: use match id from stage
   let selectedMatchId = $state<string | undefined>(undefined);
-
-  function getLead(
-    p1Battle: Battles[number],
-    p2Battle: Battles[number],
-  ): "p1" | "p2" {
-    if (p1Battle.leadStatus === -1) return "p2";
-    if (p2Battle.leadStatus === -1) return "p1";
-
-    return p1Battle.leadStatus === 1 ? "p1" : "p2";
-  }
-
-  function onStartMatch(match: repository.Match[]) {
-    stage.clear();
-    judgement.clear();
-
-    selectedMatchId = match[0].matchId;
-    stage.matchId = selectedMatchId;
-
-    const p1 = match[0];
-    const p2 = match[1];
-
-    if (!p1.participantId || !p2.participantId) {
-      console.warn("missing participant id");
-      return;
-    }
-    const battles = activeBattles.filter(
-      (battle) => battle.matchId === p1.matchId,
-    );
-
-    if (battles.length !== 2) {
-      console.warn("active battle not found or incomplete");
-      return;
-    }
-
-    const p1Battle = battles.find(
-      (battle) => battle.participantId === p1.participantId,
-    );
-    const p2Battle = battles.find(
-      (battle) => battle.participantId === p2.participantId,
-    );
-
-    if (!p1Battle || !p2Battle) {
-      console.warn("missing active battle participant");
-      return;
-    }
-
-    const lead = getLead(p1Battle, p2Battle);
-
-    if (!lead) {
-      console.warn("no lead participant");
-      return;
-    }
-
-    stage.setDrivers(p1.participantId, p2.participantId, lead);
-  }
 
   const sortedMatches = $derived(
     [...matches]
@@ -160,6 +111,7 @@
   ) {
     await updateNoteMutation.mutateAsync("");
     await ResetBattle(tournamentID, selectedMatchId!);
+    await ResetMatchScores(selectedMatchId!);
 
     await CreateTournamentActivityLog({
       tournament_id: tournamentID,
@@ -182,7 +134,7 @@
       queryKey: ["logs", tournamentID],
     });
 
-    onStartMatch(match);
+    onLoadMatch(match);
   }
 
   async function onHandleConclude() {
@@ -225,6 +177,7 @@
       omtDialogOpen = false;
     } finally {
       isProcessing = false;
+      clearMatchSelection();
     }
   }
 
@@ -236,6 +189,7 @@
       concludeDialogOpen = false;
     } finally {
       isProcessing = false;
+      clearMatchSelection();
     }
   }
 
@@ -284,7 +238,75 @@
   function clearMatchSelection() {
     stage.clear();
     judgement.clear();
+    judgement.onSubmitJudgementEdit();
     selectedMatchId = undefined;
+  }
+
+  // scores initilalizations
+  async function onLoadMatch(match: repository.Match[]) {
+    const currentMatchID = match[0].matchId;
+    stage.matchId = currentMatchID;
+    selectedMatchId = currentMatchID;
+    try {
+      const scores = await InitializeMatchScores({
+        matchId: match[0].matchId,
+        participants: match.map((m) => m.participantId!),
+        tournamentID,
+      });
+
+      const leading = activeBattles.find((battle) => battle.leadStatus == 1);
+      const chasing = activeBattles.find((battle) => battle.leadStatus != 1);
+      if (!leading || !chasing) {
+        console.error("need both leading and chasing");
+        return;
+      }
+
+      const currentRound = scores.find(
+        (score) => score.leadParticipantID === leading.participantId,
+      );
+      if (!currentRound) {
+        console.error("no current round. not supposed to happen");
+        return;
+      }
+
+      judgement.results = currentRound.results;
+      stage.setDrivers(leading.participantId, chasing.participantId, "p1");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function onEditMatchRound(match: repository.Match[], round: number) {
+    const currentMatchID = match[0].matchId;
+    stage.matchId = currentMatchID;
+    selectedMatchId = currentMatchID;
+
+    const scores = await InitializeMatchScores({
+      matchId: match[0].matchId,
+      participants: match.map((m) => m.participantId!),
+      tournamentID,
+    });
+
+    const currentRound = scores.find((score) => score.round === round);
+    if (!currentRound) {
+      console.error("no current round. not supposed to happen");
+      return;
+    }
+    const otherRound = scores.find(
+      (score) => score.round !== currentRound.round,
+    );
+
+    if (!otherRound) {
+      console.error("other participant score not found");
+      return;
+    }
+
+    stage.setDrivers(
+      currentRound.leadParticipantID,
+      otherRound.leadParticipantID,
+      "p1",
+    );
+    judgement.onJudgementEdit({ round }, currentRound.results);
   }
 </script>
 
@@ -411,18 +433,6 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                  <!-- PLACEHOLDER: run progress pips. Per-run status is not wired yet; both fill in once bothRunFinished is true. -->
-                  {#each ["R1", "R2"] as pip}
-                    <span
-                      class={`inline-flex h-5 items-center rounded-full border px-2 text-[11px] font-semibold ${
-                        currentMatch.bothRunFinished
-                          ? "border-foreground/80 bg-foreground text-background"
-                          : "border-border text-muted-foreground"
-                      }`}
-                    >
-                      {pip}
-                    </span>
-                  {/each}
                   {#if isSelected}
                     <Badge variant="secondary" class="gap-1.5">
                       <span class="size-1.5 rounded-full bg-foreground"></span>
@@ -434,6 +444,37 @@
                       {capitalize(currentMatch.status)}
                     </Badge>
                   {/if}
+
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger>
+                      {#snippet child({ props })}
+                        <Button
+                          {...props}
+                          variant="ghost"
+                          size="icon"
+                          class="size-8 text-muted-foreground"
+                          aria-label={`Match ${matchNumber} actions`}
+                        >
+                          <EllipsisVerticalIcon />
+                        </Button>
+                      {/snippet}
+                    </DropdownMenu.Trigger>
+
+                    <DropdownMenu.Content align="end" class="w-56">
+                      <DropdownMenu.Item
+                        onSelect={() => onEditMatchRound(match, 1)}
+                      >
+                        <Pencil class="mr-2 h-4 w-4" />
+                        <span class="flex-1"> Edit round 1 </span>
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        onSelect={() => onEditMatchRound(match, 2)}
+                      >
+                        <Pencil class="mr-2 h-4 w-4" />
+                        <span class="flex-1"> Edit round 2 </span>
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
                 </div>
               </div>
             </div>
@@ -647,7 +688,7 @@
                             hasBothParticipants
                           ) {
                             if (selectedMatchId !== currentMatch.matchId) {
-                              onStartMatch(match);
+                              onLoadMatch(match);
                             } else {
                               clearMatchSelection();
                             }

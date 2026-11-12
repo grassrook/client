@@ -27,6 +27,7 @@ const defaultValue: State = {
 
 class Stage {
   state = $state(defaultValue);
+  round = $state<1 | 2>(1);
   matchId = $state<string | undefined>(undefined);
 
   clear() {
@@ -112,6 +113,18 @@ class Stage {
     const p2 = this.state.p2.lead_score + this.state.p2.chase_score;
 
     return p1 > p2 ? this.state.p1.participantId : this.state.p2.participantId;
+  }
+
+  getLeader() {
+    return this.state.p1.state === "lead"
+      ? this.state.p1.participantId
+      : this.state.p2.participantId;
+  }
+
+  getChaser() {
+    return this.state.p1.state === "chase"
+      ? this.state.p1.participantId
+      : this.state.p2.participantId;
   }
 }
 

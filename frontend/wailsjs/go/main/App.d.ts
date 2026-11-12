@@ -9,6 +9,7 @@ import {track} from '../models';
 import {qualifyingscore} from '../models';
 import {entrant} from '../models';
 import {participant} from '../models';
+import {eliminationscore} from '../models';
 
 export function ChangeLeader(arg1:string,arg2:string):Promise<void>;
 
@@ -80,6 +81,8 @@ export function GetTracks():Promise<Array<track.Track>>;
 
 export function HasChallongeAPIKey():Promise<boolean>;
 
+export function InitializeMatchScores(arg1:eliminationscore.InitializeScoreParam):Promise<Array<eliminationscore.ScoreData>>;
+
 export function InitializeQualifyingScores(arg1:string):Promise<void>;
 
 export function InsertBulkParticipant(arg1:string,arg2:Array<string>):Promise<Array<string>>;
@@ -89,6 +92,8 @@ export function ListCarMakes():Promise<Array<car.CarMake>>;
 export function ReplaceParticipant(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function ResetBattle(arg1:string,arg2:string):Promise<void>;
+
+export function ResetMatchScores(arg1:string):Promise<void>;
 
 export function SetChallongeAPIKey(arg1:string):Promise<void>;
 
@@ -101,6 +106,10 @@ export function UpdateCar(arg1:string,arg2:car.UpdateRegisteredCar):Promise<void
 export function UpdateCriteriaConfig(arg1:number,arg2:repository.CriteriaConfig):Promise<void>;
 
 export function UpdateDriver(arg1:driver.UpdateDriverReq):Promise<void>;
+
+export function UpdateEliminationScore(arg1:eliminationscore.UpdateEliminationScoreParams):Promise<number>;
+
+export function UpdateEliminationScoreByRound(arg1:eliminationscore.UpdateEliminationScoreByRoundParams):Promise<number>;
 
 export function UpdateEntrant(arg1:repository.UpdateEntrantParams):Promise<void>;
 

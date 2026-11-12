@@ -39,11 +39,11 @@ function roundToNearestTenths(n: number): number {
 
 class Judgement {
   edit = $state<
-    | {
+    | Partial<{
         id: string;
         participantID: string;
         round: number;
-      }
+      }>
     | undefined
   >(undefined);
   processing = $state(false);
@@ -126,7 +126,10 @@ class Judgement {
     this.results = {};
   }
 
-  onJudgementEdit(edit: typeof this.edit, results: Record<string, Result>) {
+  onJudgementEdit(
+    edit: Partial<NonNullable<typeof this.edit>>,
+    results: Record<string, Result>,
+  ) {
     this.edit = edit;
     this.results = results;
   }

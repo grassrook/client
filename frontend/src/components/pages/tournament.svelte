@@ -126,7 +126,13 @@
                 </StageCard>
 
                 {#if !hidePanel}
-                  <Panel {stage} {judgement} {tournament} {isQualifying}>
+                  <Panel
+                    {stage}
+                    {judgement}
+                    {tournament}
+                    {isQualifying}
+                    entrants={entrantsQuery.data ?? []}
+                  >
                     {#if isQualifying}
                       <QualifyingHandler
                         {tournament}
@@ -134,7 +140,12 @@
                         entrants={entrantsQuery.data ?? []}
                       />
                     {:else}
-                      <BattleHandler {tournamentID} {judgement} {stage} />
+                      <BattleHandler
+                        {tournamentID}
+                        {judgement}
+                        {stage}
+                        activeBattles={activeBattles.data ?? []}
+                      />
                     {/if}
                   </Panel>
                 {/if}

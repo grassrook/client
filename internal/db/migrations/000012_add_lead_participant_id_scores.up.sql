@@ -1,0 +1,1 @@
+ALTER TABLE scores ADD COLUMN lead_participant_id TEXT REFERENCES participants(id);

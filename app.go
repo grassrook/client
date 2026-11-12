@@ -11,6 +11,7 @@ import (
 	"judginginternal/internal/logger"
 	"judginginternal/internal/models/car"
 	"judginginternal/internal/models/driver"
+	eliminationscore "judginginternal/internal/models/elimination_score"
 	"judginginternal/internal/models/entrant"
 	"judginginternal/internal/models/participant"
 	qualifyingscore "judginginternal/internal/models/qualifying_score"
@@ -45,6 +46,7 @@ type App struct {
 	entrantsRepo               repository.EntrantsRepository
 	criteriaConfigRepo         repository.CriteriaConfigRepository
 	qualifyingScoresRepo       repository.QualfyingScoresRepository
+	eliminationScoresRepo      repository.EliminationScoresRepository
 	tournamentActivityLogsRepo repository.TournamentActivityLogsRepository
 	registeredCarsRepo         repository.RegisteredCarsRepository
 }
@@ -100,6 +102,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.qualifyingScoresRepo = &repository.SQLiteQualifyingScoresRepository{
+		DB: client,
+	}
+
+	a.eliminationScoresRepo = &repository.SQLiteEliminationScoresRepository{
 		DB: client,
 	}
 
@@ -595,6 +601,38 @@ func (a *App) ChangeLeader(tournamentID, matchID string) error {
 	err := a.matchesRepo.ChangeLeader(a.ctx, tournamentID, matchID)
 	if err != nil {
 		a.logError("ChangeLeader", err)
+	}
+	return err
+}
+
+func (a *App) InitializeMatchScores(param eliminationscore.InitializeScoreParam) ([]eliminationscore.ScoreData, error) {
+	scores, err := a.eliminationScoresRepo.InitializeScores(a.ctx, param)
+	if err != nil {
+		a.logError("InitializeMatchScores", err)
+	}
+	return scores, err
+}
+
+func (a *App) UpdateEliminationScore(param eliminationscore.UpdateEliminationScoreParams) (float64, error) {
+	score, err := a.eliminationScoresRepo.UpdateScore(a.ctx, param)
+	if err != nil {
+		a.logError("UpdateEliminationScore", err)
+	}
+	return score, err
+}
+
+func (a *App) UpdateEliminationScoreByRound(param eliminationscore.UpdateEliminationScoreByRoundParams) (float64, error) {
+	score, err := a.eliminationScoresRepo.UpdateScoreByRound(a.ctx, param)
+	if err != nil {
+		a.logError("UpdateEliminationScore", err)
+	}
+	return score, err
+}
+
+func (a *App) ResetMatchScores(matchID string) error {
+	err := a.eliminationScoresRepo.ResetScores(a.ctx, matchID)
+	if err != nil {
+		a.logError("UpdateEliminationScore", err)
 	}
 	return err
 }

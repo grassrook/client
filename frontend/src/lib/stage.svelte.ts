@@ -29,8 +29,10 @@ class Stage {
   state = $state(defaultValue);
   round = $state<1 | 2>(1);
   matchId = $state<string | undefined>(undefined);
+  bothRunFinished = $state(false);
 
   clear() {
+    this.bothRunFinished = false;
     this.matchId = undefined;
     this.state = {
       p1: { ...defaultValue.p1 },

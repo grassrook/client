@@ -1,7 +1,6 @@
 <script lang="ts">
   /* eslint-disable svelte/require-each-key */
-  import { Pencil } from "@lucide/svelte";
-  import EllipsisVerticalIcon from "@lucide/svelte/icons/ellipsis-vertical";
+  import { ChevronDown, Pencil, Swords } from "@lucide/svelte";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { capitalize } from "es-toolkit/string";
 
@@ -67,9 +66,6 @@
 
   const queryClient = useQueryClient();
 
-  // TODO: use match id from stage
-  let selectedMatchId = $state<string | undefined>(undefined);
-
   const sortedMatches = $derived(
     [...matches]
       .sort((a, b) => {
@@ -110,8 +106,8 @@
     matchNumber: number,
   ) {
     await updateNoteMutation.mutateAsync("");
-    await ResetBattle(tournamentID, selectedMatchId!);
-    await ResetMatchScores(selectedMatchId!);
+    await ResetBattle(tournamentID, stage.matchId!);
+    await ResetMatchScores(stage.matchId!);
 
     await CreateTournamentActivityLog({
       tournament_id: tournamentID,
@@ -138,7 +134,7 @@
   }
 
   async function onHandleConclude() {
-    await ConcludeBattle(tournamentID, selectedMatchId!);
+    await ConcludeBattle(tournamentID, stage.matchId!);
     await SyncTournament(tournamentID);
 
     await queryClient.invalidateQueries({
@@ -158,7 +154,6 @@
     });
 
     stage.clear();
-    selectedMatchId = undefined;
   }
 
   let isProcessing = $state(false);
@@ -239,13 +234,13 @@
     stage.clear();
     judgement.clear();
     judgement.onSubmitJudgementEdit();
-    selectedMatchId = undefined;
   }
 
   // scores initilalizations
   async function onLoadMatch(match: repository.Match[]) {
-    const currentMatchID = match[0].matchId;
-    selectedMatchId = currentMatchID;
+    const currentMatch = match[0];
+    stage.matchId = currentMatch.matchId;
+    stage.bothRunFinished = currentMatch.bothRunFinished;
     try {
       const scores = await InitializeMatchScores({
         matchId: match[0].matchId,
@@ -255,21 +250,18 @@
 
       const leading = activeBattles.find(
         (battle) =>
-          battle.matchId === currentMatchID && battle.leadStatus === 1,
+          battle.matchId === currentMatch.matchId && battle.leadStatus === 1,
       );
 
       const chasing = activeBattles.find(
         (battle) =>
-          battle.matchId === currentMatchID && battle.leadStatus !== 1,
+          battle.matchId === currentMatch.matchId && battle.leadStatus !== 1,
       );
 
       if (!leading || !chasing) {
         console.warn("onloadmatch need both leading and chasing");
         return;
       }
-
-      // set stage match id to show the judging panel
-      stage.matchId = currentMatchID;
 
       const currentRound = scores.find(
         (score) => score.leadParticipantID === leading.participantId,
@@ -289,7 +281,6 @@
   async function onEditMatchRound(match: repository.Match[], round: number) {
     const currentMatchID = match[0].matchId;
     stage.matchId = currentMatchID;
-    selectedMatchId = currentMatchID;
 
     const scores = await InitializeMatchScores({
       matchId: match[0].matchId,
@@ -388,7 +379,7 @@
             match[0].participantId && match[1].participantId}
           {@const roundKey = roundKeys()[i]}
           {@const matchNumber = round.indexOf(matchData) + 1}
-          {@const isSelected = selectedMatchId === currentMatch.matchId}
+          {@const isSelected = stage.matchId === currentMatch.matchId}
           {@const canLoad =
             currentMatch.status === "open" && !!hasBothParticipants}
           {@const showActions = !!currentMatch.bothRunFinished && isSelected}
@@ -424,12 +415,6 @@
                 : score2 >= score1
                   ? "bg-foreground/80"
                   : "bg-muted-foreground/40"}
-          {@const marginText =
-            totalScore === 0
-              ? "No scores yet"
-              : score1 === score2
-                ? "Level"
-                : `${match[score1 > score2 ? 0 : 1].participant_name ?? "TBD"} by ${Math.abs(score1 - score2)}`}
 
           <div
             class={`rounded-lg border border-border/80 transition-colors ${
@@ -454,37 +439,6 @@
                       {capitalize(currentMatch.status)}
                     </Badge>
                   {/if}
-
-                  <DropdownMenu.Root>
-                    <DropdownMenu.Trigger>
-                      {#snippet child({ props })}
-                        <Button
-                          {...props}
-                          variant="ghost"
-                          size="icon"
-                          class="size-8 text-muted-foreground"
-                          aria-label={`Match ${matchNumber} actions`}
-                        >
-                          <EllipsisVerticalIcon />
-                        </Button>
-                      {/snippet}
-                    </DropdownMenu.Trigger>
-
-                    <DropdownMenu.Content align="end" class="w-56">
-                      <DropdownMenu.Item
-                        onSelect={() => onEditMatchRound(match, 1)}
-                      >
-                        <Pencil class="mr-2 h-4 w-4" />
-                        <span class="flex-1"> Edit round 1 </span>
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        onSelect={() => onEditMatchRound(match, 2)}
-                      >
-                        <Pencil class="mr-2 h-4 w-4" />
-                        <span class="flex-1"> Edit round 2 </span>
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Root>
                 </div>
               </div>
             </div>
@@ -653,7 +607,6 @@
                           ? `${Math.round((score1 / totalScore) * 100)}%`
                           : "—"}
                       </span>
-                      <span class="min-w-0 truncate">{marginText}</span>
                       <span>
                         {totalScore > 0
                           ? `${Math.round((score2 / totalScore) * 100)}%`
@@ -687,29 +640,72 @@
 
                   <div class="flex flex-wrap items-center justify-end gap-2">
                     {#if canLoad}
-                      <Button
-                        type="button"
-                        variant={isSelected ? "outline" : "secondary"}
-                        aria-pressed={isSelected}
-                        class="focus-visible:border-border focus-visible:ring-2 focus-visible:ring-muted-foreground/30"
-                        onclick={() => {
-                          if (
-                            currentMatch.status === "open" &&
-                            hasBothParticipants
-                          ) {
-                            if (selectedMatchId !== currentMatch.matchId) {
-                              onLoadMatch(match);
-                            } else {
-                              clearMatchSelection();
-                            }
+                      {@const toggleLoad = () => {
+                        if (
+                          currentMatch.status === "open" &&
+                          hasBothParticipants
+                        ) {
+                          if (stage.matchId !== currentMatch.matchId) {
+                            onLoadMatch(match);
+                          } else {
+                            clearMatchSelection();
                           }
-                        }}
-                      >
-                        {isSelected ? "Unload" : "Load match"}
-                      </Button>
+                        }
+                      }}
+
+                      {#if isSelected}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          aria-pressed={true}
+                          class="focus-visible:border-border focus-visible:ring-2 focus-visible:ring-muted-foreground/30"
+                          onclick={toggleLoad}
+                        >
+                          Unload
+                        </Button>
+                      {:else}
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger>
+                            {#snippet child({ props })}
+                              <Button
+                                {...props}
+                                type="button"
+                                variant="secondary"
+                                class="gap-1.5 focus-visible:border-border focus-visible:ring-2 focus-visible:ring-muted-foreground/30"
+                                aria-label={`Enter match ${matchNumber}`}
+                              >
+                                Load
+                                <ChevronDown class="h-4 w-4 opacity-70" />
+                              </Button>
+                            {/snippet}
+                          </DropdownMenu.Trigger>
+
+                          <DropdownMenu.Content align="end" class="w-56">
+                            <DropdownMenu.Item onSelect={toggleLoad}>
+                              <Swords class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Load main battle </span>
+                            </DropdownMenu.Item>
+
+                            <DropdownMenu.Separator />
+
+                            <DropdownMenu.Item
+                              onSelect={() => onEditMatchRound(match, 1)}
+                            >
+                              <Pencil class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Edit round 1 </span>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item
+                              onSelect={() => onEditMatchRound(match, 2)}
+                            >
+                              <Pencil class="mr-2 h-4 w-4" />
+                              <span class="flex-1"> Edit round 2 </span>
+                            </DropdownMenu.Item>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                      {/if}
                     {/if}
 
-                    {#if showActions}
+                    {#if showActions && !judgement.edit}
                       <ButtonGroup.Root
                         orientation="horizontal"
                         class="flex justify-end"

@@ -26,6 +26,7 @@
     tournamentID,
     judgement,
     stage,
+    activeBattles,
   }: {
     tournamentID: string;
     judgement: Judgement;
@@ -97,8 +98,17 @@
           queryKey: ["matches", tournamentID],
         });
 
-        stage.switchLeader();
-        judgement.clear();
+        const isFinished = activeBattles
+          .filter((battle) => battle.matchId === stage.matchId)
+          .every((battle) => battle.leadStatus === -1);
+
+        // if round 2, set both run finished to close the panel
+        if (isFinished) {
+          stage.bothRunFinished = true;
+        } else {
+          stage.switchLeader();
+          judgement.clear();
+        }
       } else {
         const paramp1 =
           new eliminationscore.UpdateEliminationScoreByRoundParams({

@@ -74,7 +74,7 @@
 </script>
 
 <div class="relative mt-2" aria-busy={judgement.processing}>
-  {#if isQualifying || stage.matchId}
+  {#if (isQualifying || stage.matchId) && !stage.bothRunFinished}
     <div class="rounded-xl border text-card-foreground">
       <div class="p-2">
         {#if judgement.edit}

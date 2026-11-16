@@ -568,7 +568,9 @@
                               </span>
                               <span
                                 class="font-semibold text-muted-foreground tabular-nums"
-                                >{entrant.scores[runNumber - 1]}</span
+                                >{currentMatch.roundScored[runNumber - 1]
+                                  ? entrant.scores[runNumber - 1]
+                                  : "—"}</span
                               >
                             </div>
                           {/each}

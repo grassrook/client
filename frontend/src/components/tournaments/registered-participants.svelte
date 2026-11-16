@@ -44,6 +44,7 @@
   // eslint-disable-next-line svelte/prefer-writable-derived
   let items = $state<entrant.Entrant[]>([]);
   $effect(() => {
+    console.log(matches);
     items = [...orderedEntrants];
   });
 
@@ -56,14 +57,22 @@
   );
 
   // ---------- bracket / replace ----------
-  const bracketParticipantIds = $derived(
-    new Set(
+  const bracketParticipantIds = $derived.by(() => {
+    const scoredParticipantIds = new Set(
+      matches
+        .flat(2)
+        .filter((match) => match.roundScored.some(Boolean))
+        .map((match) => match.participantId)
+        .filter((id): id is string => !!id),
+    );
+
+    return new Set(
       matches
         .flat(2)
         .map((match) => match.participantId)
-        .filter((id): id is string => !!id),
-    ),
-  );
+        .filter((id): id is string => !!id && !scoredParticipantIds.has(id)),
+    );
+  });
 
   // only participants who are NOT in the bracket can be swapped in
   const replacementOptions = $derived(

@@ -40,6 +40,7 @@ type Match struct {
 	Scores                 [2]float64 `json:"scores"` // represents inidividual's each round score
 	BothRunFinished        bool       `json:"bothRunFinished"`
 	Note                   string     `json:"note"`
+	RoundScored            [2]bool    `json:"roundScored"`
 }
 
 type RoundGroup struct {
@@ -173,53 +174,71 @@ func (r *SQLiteMatchesRepository) GetMatches(
 	tournamentID string,
 ) ([][][]Match, error) {
 	const query = `
-		SELECT
-			n.match_id,
-			p.name,
-			n.status,
-			n.round,
-			n.winner_id,
-			p.challonge_participant_id,
-			p.id,
-			n.score,
-			COALESCE(
-				(
-					SELECT
-						COUNT(*) = 2
-						AND SUM(
-							CASE
-								WHEN ab.lead_status = -1 THEN 1
-								ELSE 0
-							END
-						) = 2
-					FROM active_battles ab
-					WHERE ab.match_id = n.match_id
-					GROUP BY ab.match_id
-				),
-				1
-			) AS both_run_finished,
-			 n.note,
-		COALESCE(s.round1_score, 0),
-		COALESCE(s.round2_score, 0)
-		FROM nodes n
-		INNER JOIN brackets b ON n.bracket_id = b.id
-		LEFT JOIN participants p ON p.id = n.participant_id
-		LEFT JOIN (
-				SELECT
-						tournament_id,
-						match_id,
-						participant_id,
-						MAX(CASE WHEN round = 1 THEN score END) AS round1_score,
-						MAX(CASE WHEN round = 2 THEN score END) AS round2_score
-				FROM scores
-				WHERE kind = 'elimination'
-						AND round IN (1, 2)
-				GROUP BY tournament_id, match_id, participant_id
-		) s ON s.tournament_id = b.tournament_id
-				AND s.match_id = n.match_id
-				AND s.participant_id = n.participant_id
-		WHERE b.tournament_id = ?
-	`
+    SELECT
+        n.match_id,
+        p.name,
+        n.status,
+        n.round,
+        n.winner_id,
+        p.challonge_participant_id,
+        p.id,
+        n.score,
+        COALESCE(
+            (
+                SELECT
+                    COUNT(*) = 2
+                    AND SUM(
+                        CASE
+                            WHEN ab.lead_status = -1 THEN 1
+                            ELSE 0
+                        END
+                    ) = 2
+                FROM active_battles ab
+                WHERE ab.match_id = n.match_id
+                GROUP BY ab.match_id
+            ),
+            1
+        ) AS both_run_finished,
+        n.note,
+        COALESCE(s.round1_score, 0),
+        COALESCE(s.round2_score, 0),
+        COALESCE(s.round1_scored, 0),
+        COALESCE(s.round2_scored, 0)
+    FROM nodes n
+    INNER JOIN brackets b ON n.bracket_id = b.id
+    LEFT JOIN participants p ON p.id = n.participant_id
+    LEFT JOIN (
+        SELECT
+            tournament_id,
+            match_id,
+            participant_id,
+
+            MAX(CASE WHEN round = 1 THEN score END) AS round1_score,
+            MAX(CASE WHEN round = 2 THEN score END) AS round2_score,
+
+            MAX(
+                CASE
+                    WHEN round = 1 AND status = 'scored' THEN 1
+                    ELSE 0
+                END
+            ) AS round1_scored,
+
+            MAX(
+                CASE
+                    WHEN round = 2 AND status = 'scored' THEN 1
+                    ELSE 0
+                END
+            ) AS round2_scored
+
+        FROM scores
+        WHERE kind = 'elimination'
+            AND round IN (1, 2)
+        GROUP BY tournament_id, match_id, participant_id
+    ) s ON s.tournament_id = b.tournament_id
+        AND s.match_id = n.match_id
+        AND s.participant_id = n.participant_id
+    WHERE b.tournament_id = ?
+`
 
 	rows, err := r.DB.QueryContext(ctx, query, tournamentID)
 	if err != nil {
@@ -240,6 +259,7 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			finalScore      sql.NullFloat64
 			bothRunFinished int
 			note            string
+			roundScored     [2]int
 		)
 
 		err := rows.Scan(
@@ -255,6 +275,8 @@ func (r *SQLiteMatchesRepository) GetMatches(
 			&note,
 			&match.Scores[0],
 			&match.Scores[1],
+			&roundScored[0],
+			&roundScored[1],
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan bracket match: %w", err)
@@ -275,7 +297,12 @@ func (r *SQLiteMatchesRepository) GetMatches(
 		if finalScore.Valid {
 			match.FinalScore = &finalScore.Float64
 		}
+
 		match.BothRunFinished = bothRunFinished != 0
+
+		for i, scored := range roundScored {
+			match.RoundScored[i] = scored != 0
+		}
 
 		// preserve the order in which rounds first appear in the query results.
 		roundIndex, exists := roundIndexes[match.Round]

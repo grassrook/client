@@ -686,6 +686,7 @@ export namespace repository {
 	    scores: number[];
 	    bothRunFinished: boolean;
 	    note: string;
+	    roundScored: boolean[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Match(source);
@@ -704,6 +705,7 @@ export namespace repository {
 	        this.scores = source["scores"];
 	        this.bothRunFinished = source["bothRunFinished"];
 	        this.note = source["note"];
+	        this.roundScored = source["roundScored"];
 	    }
 	}
 	

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { CircleHelp } from "@lucide/svelte";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { untrack } from "svelte";
@@ -11,6 +12,7 @@
   import Label from "$src/components/ui/label/label.svelte";
   import * as Select from "$src/components/ui/select";
   import * as Switch from "$src/components/ui/switch";
+  import * as Tooltip from "$src/components/ui/tooltip";
   import {
     CreateCriteriaConfig,
     UpdateCriteriaConfig,
@@ -539,7 +541,27 @@
 
                   {#if !(tag.type === "deduction" && tag.valueType === "switch")}
                     <div class="space-y-2">
-                      <Label>Max Value</Label>
+                      <div class="flex items-center gap-1.5">
+                        <Label>Score Increment</Label>
+
+                        <Tooltip.Root>
+                          <Tooltip.Trigger>
+                            <button
+                              type="button"
+                              class="text-muted-foreground hover:text-foreground"
+                            >
+                              <CircleHelp class="size-3.5" />
+                            </button>
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>
+                            <p>
+                              Amount of score added or deducted with each slider
+                              step.
+                            </p>
+                          </Tooltip.Content>
+                        </Tooltip.Root>
+                      </div>
+
                       <Input
                         type="number"
                         min="0"
@@ -549,7 +571,27 @@
                     </div>
 
                     <div class="space-y-2">
-                      <Label>Multiplier</Label>
+                      <div class="flex items-center gap-1.5">
+                        <Label>Multiplier</Label>
+
+                        <Tooltip.Root>
+                          <Tooltip.Trigger>
+                            <button
+                              type="button"
+                              class="text-muted-foreground hover:text-foreground"
+                            >
+                              <CircleHelp class="size-3.5" />
+                            </button>
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>
+                            <p>
+                              Multiplies the score increment to determine the
+                              actual score change.
+                            </p>
+                          </Tooltip.Content>
+                        </Tooltip.Root>
+                      </div>
+
                       <Input
                         type="number"
                         min="0"
